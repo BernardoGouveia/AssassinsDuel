@@ -283,7 +283,10 @@ public class GameFrame extends JFrame {
 
     private void refresh() {
         Assassin curr = state.currentPlayer();
-        turnLabel.setText("TURNO " + state.turnNumber + " | " + curr.name.toUpperCase() + " | AP " + curr.ap + "/" + curr.maxAp);
+        String apTxt = curr.ap > curr.maxAp
+                ? "AP " + curr.ap + " (+" + (curr.ap - curr.maxAp) + " BÓNUS)"
+                : "AP " + curr.ap + "/" + curr.maxAp;
+        turnLabel.setText("TURNO " + state.turnNumber + " | " + curr.name.toUpperCase() + " | " + apTxt);
         turnLabel.setForeground(curr.color);
 
         for (int i = 0; i < state.players.length; i++) {
@@ -397,25 +400,41 @@ public class GameFrame extends JFrame {
             FontMetrics fm2 = g.getFontMetrics();
             g.drawString(hpTxt, barX + barW / 2 - fm2.stringWidth(hpTxt) / 2, barY + barH - 3);
 
-            // AP pips
+            // AP pips — show extras (beyond maxAp) in gold so the bonus is visible.
             int apY = 72;
             int pipR = 7;
             g.setFont(new Font("Monospaced", Font.BOLD, 10));
             g.setColor(SUBTLE);
             g.drawString("AP", 10, apY + 5);
-            for (int i = 0; i < a.maxAp; i++) {
+            int totalPips = Math.max(a.ap, a.maxAp);
+            for (int i = 0; i < totalPips; i++) {
                 int px = 36 + i * (pipR * 2 + 4);
-                g.setColor(i < a.ap ? CYAN : new Color(30, 40, 56));
+                boolean filled = i < a.ap;
+                boolean bonus = i >= a.maxAp;
+                if (filled && bonus) {
+                    g.setColor(new Color(255, 200, 80));
+                } else if (filled) {
+                    g.setColor(CYAN);
+                } else {
+                    g.setColor(new Color(30, 40, 56));
+                }
                 g.fillOval(px, apY - 2, pipR * 2, pipR * 2);
-                g.setColor(i < a.ap ? Color.WHITE : CYAN_DIM);
+                if (filled && bonus) {
+                    g.setColor(new Color(255, 240, 200));
+                } else if (filled) {
+                    g.setColor(Color.WHITE);
+                } else {
+                    g.setColor(CYAN_DIM);
+                }
                 g.drawOval(px, apY - 2, pipR * 2, pipR * 2);
             }
 
-            // Damage boost indicator
+            // Damage boost indicator (offset further right so it doesn't clash with extra pips).
             if (a.damageBoost > 0) {
+                int dbX = Math.max(w - 56, 36 + totalPips * (pipR * 2 + 4) + 10);
                 g.setColor(new Color(255, 200, 70));
                 g.setFont(new Font("Monospaced", Font.BOLD, 11));
-                g.drawString("⚡+" + a.damageBoost, w - 56, apY + 6);
+                g.drawString("⚡+" + a.damageBoost, dbX, apY + 6);
             }
 
             g.dispose();

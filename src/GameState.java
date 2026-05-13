@@ -274,7 +274,8 @@ public class GameState {
         return reduced;
     }
 
-    private void spawnRandomPowerup() {
+    /** Returns true if a powerup was placed; false if no valid tile was found. */
+    private boolean spawnRandomPowerup() {
         for (int attempt = 0; attempt < 200; attempt++) {
             int x = rng.nextInt(WIDTH);
             int y = rng.nextInt(HEIGHT);
@@ -284,8 +285,9 @@ public class GameState {
             if (isInStartingArea(x, y)) continue;
             Powerup[] all = Powerup.values();
             powerups[x][y] = all[rng.nextInt(all.length)];
-            return;
+            return true;
         }
+        return false;
     }
 
     private void triggerFlash(int x, int y) {
@@ -339,10 +341,15 @@ public class GameState {
         selectedAction = Action.MOVE;
         log.add("--- Turno " + turnNumber + ": " + currentPlayer().name + " ---");
 
-        // Spawn a powerup roughly every full round (= numPlayers turns) * 3
+        // Every 3 full rounds, spawn 3 fresh powerups across the map.
         if (turnNumber % (3 * players.length) == 0) {
-            spawnRandomPowerup();
-            log.add("✦ Novo power-up apareceu no mapa.");
+            int spawned = 0;
+            for (int i = 0; i < 3; i++) {
+                if (spawnRandomPowerup()) spawned++;
+            }
+            if (spawned > 0) {
+                log.add("✦ " + spawned + " power-ups novos apareceram no mapa.");
+            }
         }
     }
 
