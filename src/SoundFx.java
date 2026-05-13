@@ -30,19 +30,25 @@ public class SoundFx {
     }
 
     /**
-     * Sword slash — whoosh + damage thwack baked into the same buffer.
-     * Combining into one PCM buffer means only ONE SourceDataLine opens per
-     * attack, which is far more reliable than firing two parallel audio
-     * threads (the second often gets dropped on Windows).
+     * Katana slash: layered air-whoosh + descending blade tone + metallic clang at
+     * impact + the damage thwack — all baked into a single PCM buffer so only one
+     * SourceDataLine opens per attack (avoids Windows dropping the second line).
      */
     public static void melee() {
         if (!enabled) return;
         async(() -> {
-            byte[] sweep = renderSweep(1100, 140, 140, 0.26, 0.005, 0.060, 0.6);
-            byte[] noise = renderNoise(120, 0.18, 0.004, 0.080, 3500);
-            byte[] whoosh = mix(sweep, noise);
-            // Damage lands ~40ms into the swing.
-            play(mixAt(whoosh, damageBuffer(), 40));
+            // 1. Wind-up: airy high-band noise that fades fast.
+            byte[] air = renderNoise(80, 0.22, 0.004, 0.050, 5000);
+            // 2. Blade swing: mid-band descending sweep.
+            byte[] swing = renderSweep(900, 220, 100, 0.18, 0.005, 0.060, 0.5);
+            // 3. Metallic clang at impact: sharp bell with overtones, fast decay.
+            byte[] clang = renderBell(1400, 130, 0.34);
+
+            // Layer the swing components from t=0; metallic clang lands ~50ms in.
+            byte[] base = mix(air, swing);
+            base = mixAt(base, clang, 50);
+            // Damage thwack also at ~50ms (synced with the metallic clang).
+            play(mixAt(base, damageBuffer(), 50));
         });
     }
 
