@@ -3,17 +3,31 @@ import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 import java.util.function.Consumer;
 
 public class GamePanel extends JPanel {
     private final GameState state;
     private final Consumer<String> onAction;
-    public static final int CELL = 48;
-    public static final int PADDING = 12;
-    /** Ms per full cell of movement. */
+    public static final int CELL = 52;
+    public static final int PADDING = 14;
     private static final double MOVE_DURATION_MS = 150.0;
 
+    private static final Color CYAN = new Color(40, 230, 255);
+    private static final Color MAGENTA = new Color(255, 50, 180);
+    private static final Color GRID_DARK_A = new Color(14, 20, 32);
+    private static final Color GRID_DARK_B = new Color(10, 16, 26);
+
     private long lastTickTime = System.currentTimeMillis();
+    private final Random rng = new Random();
+    private final List<Particle> particles = new ArrayList<>();
+    private int lastHitSeq = 0;
+    private long shakeEndTime = 0;
+    private double shakeIntensity = 0;
+    private long currentFrameTime = System.currentTimeMillis();
 
     public GamePanel(GameState state, Consumer<String> onAction) {
         this.state = state;
@@ -21,7 +35,7 @@ public class GamePanel extends JPanel {
         int w = GameState.WIDTH * CELL + 2 * PADDING;
         int h = GameState.HEIGHT * CELL + 2 * PADDING;
         setPreferredSize(new Dimension(w, h));
-        setBackground(new Color(20, 22, 28));
+        setBackground(new Color(6, 10, 18));
 
         addMouseListener(new MouseAdapter() {
             @Override
@@ -36,18 +50,18 @@ public class GamePanel extends JPanel {
             }
         });
 
-        // Animation timer: smooth movement + flash expiry
         Timer t = new Timer(16, e -> tick());
         t.start();
     }
 
     private void tick() {
         long now = System.currentTimeMillis();
+        currentFrameTime = now;
         long dt = Math.max(1, now - lastTickTime);
         lastTickTime = now;
         boolean dirty = false;
 
-        double speed = dt / MOVE_DURATION_MS; // cells per frame
+        double speed = dt / MOVE_DURATION_MS;
         for (Assassin a : state.players) {
             double dx = a.x - a.visX;
             double dy = a.y - a.visY;
@@ -70,67 +84,126 @@ public class GamePanel extends JPanel {
             dirty = true;
         }
 
+        if (state.hitSeq != lastHitSeq) {
+            lastHitSeq = state.hitSeq;
+            spawnImpactParticles(state.hitX, state.hitY, state.hitAction);
+            shakeIntensity = state.hitAction == Action.SHURIKEN ? 4.5 : 6.5;
+            shakeEndTime = now + 220;
+            dirty = true;
+        }
+
+        Iterator<Particle> it = particles.iterator();
+        while (it.hasNext()) {
+            Particle p = it.next();
+            double pdt = dt / 1000.0;
+            p.vy += 380 * pdt;
+            p.x += p.vx * pdt;
+            p.y += p.vy * pdt;
+            p.life -= pdt;
+            if (p.life <= 0) it.remove();
+            else dirty = true;
+        }
+
+        if (now < state.shurikenEndTime || now < shakeEndTime) dirty = true;
+
         if (dirty) repaint();
+    }
+
+    private void spawnImpactParticles(int gx, int gy, Action act) {
+        int cx = PADDING + gx * CELL + CELL / 2;
+        int cy = PADDING + gy * CELL + CELL / 2;
+        int count = act == Action.SHURIKEN ? 18 : 24;
+        Color base = act == Action.SHURIKEN ? CYAN : new Color(255, 230, 100);
+        for (int i = 0; i < count; i++) {
+            Particle p = new Particle();
+            double ang = rng.nextDouble() * Math.PI * 2;
+            double sp = 120 + rng.nextDouble() * 220;
+            p.x = cx;
+            p.y = cy;
+            p.vx = Math.cos(ang) * sp;
+            p.vy = Math.sin(ang) * sp - 60;
+            p.life = 0.45 + rng.nextDouble() * 0.35;
+            p.maxLife = p.life;
+            p.size = 2 + rng.nextInt(3);
+            p.color = i % 4 == 0 ? Color.WHITE
+                    : i % 4 == 1 ? MAGENTA
+                    : base;
+            particles.add(p);
+        }
     }
 
     @Override
     protected void paintComponent(Graphics g0) {
         super.paintComponent(g0);
-        Graphics2D g = (Graphics2D) g0;
+        Graphics2D g = (Graphics2D) g0.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // Draw cells
+        double shakeAmt = 0;
+        if (currentFrameTime < shakeEndTime) {
+            double t = (shakeEndTime - currentFrameTime) / 220.0;
+            shakeAmt = shakeIntensity * t;
+        }
+        int sx = (int) ((rng.nextDouble() - 0.5) * 2 * shakeAmt);
+        int sy = (int) ((rng.nextDouble() - 0.5) * 2 * shakeAmt);
+        g.translate(sx, sy);
+
+        int W = getWidth(), H = getHeight();
+        GradientPaint bg = new GradientPaint(0, 0, new Color(8, 14, 24), 0, H, new Color(2, 6, 14));
+        g.setPaint(bg);
+        g.fillRect(0, 0, W, H);
+
+        g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 14));
+        for (int x = 0; x < W; x += 24) g.drawLine(x, 0, x, H);
+        for (int y = 0; y < H; y += 24) g.drawLine(0, y, W, y);
+
+        int bx = PADDING - 4;
+        int by = PADDING - 4;
+        int bw = GameState.WIDTH * CELL + 8;
+        int bh = GameState.HEIGHT * CELL + 8;
+        g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 140));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRect(bx, by, bw, bh);
+        g.setColor(MAGENTA);
+        int cm = 14;
+        g.drawLine(bx, by, bx + cm, by);
+        g.drawLine(bx, by, bx, by + cm);
+        g.drawLine(bx + bw, by, bx + bw - cm, by);
+        g.drawLine(bx + bw, by, bx + bw, by + cm);
+        g.drawLine(bx, by + bh, bx + cm, by + bh);
+        g.drawLine(bx, by + bh, bx, by + bh - cm);
+        g.drawLine(bx + bw, by + bh, bx + bw - cm, by + bh);
+        g.drawLine(bx + bw, by + bh, bx + bw, by + bh - cm);
+
         for (int x = 0; x < GameState.WIDTH; x++) {
             for (int y = 0; y < GameState.HEIGHT; y++) {
                 int px = PADDING + x * CELL;
                 int py = PADDING + y * CELL;
-                Color base = (x + y) % 2 == 0 ? new Color(45, 48, 58) : new Color(38, 41, 50);
                 if (state.grid[x][y] == Tile.WALL) {
-                    base = new Color(85, 80, 95);
-                }
-                g.setColor(base);
-                g.fillRect(px, py, CELL, CELL);
-                g.setColor(new Color(0, 0, 0, 60));
-                g.drawRect(px, py, CELL, CELL);
-
-                if (state.grid[x][y] == Tile.WALL) {
-                    g.setColor(new Color(55, 50, 65));
-                    g.fillRect(px + 5, py + 5, CELL - 10, CELL - 10);
-                    g.setColor(new Color(130, 120, 140));
-                    g.drawRect(px + 5, py + 5, CELL - 10, CELL - 10);
+                    drawStoneWall(g, px, py);
+                } else {
+                    Color base = (x + y) % 2 == 0 ? GRID_DARK_A : GRID_DARK_B;
+                    g.setColor(base);
+                    g.fillRect(px, py, CELL, CELL);
+                    g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 28));
+                    g.drawRect(px, py, CELL, CELL);
                 }
             }
         }
 
-        // Draw powerups
+        long now = currentFrameTime;
+        double bob = Math.sin(now * 0.005) * 2;
         for (int x = 0; x < GameState.WIDTH; x++) {
             for (int y = 0; y < GameState.HEIGHT; y++) {
                 Powerup p = state.powerups[x][y];
                 if (p == null) continue;
                 int px = PADDING + x * CELL;
-                int py = PADDING + y * CELL;
-                if (p == Powerup.HEAL) {
-                    g.setColor(new Color(60, 180, 90, 230));
-                    g.fillRoundRect(px + 7, py + 7, CELL - 14, CELL - 14, 10, 10);
-                    g.setColor(new Color(20, 80, 30));
-                    g.drawRoundRect(px + 7, py + 7, CELL - 14, CELL - 14, 10, 10);
-                    g.setColor(Color.WHITE);
-                    g.setFont(new Font("SansSerif", Font.BOLD, 22));
-                    drawCenteredString(g, "+", px, py, CELL, -2);
-                } else {
-                    g.setColor(new Color(230, 160, 50, 230));
-                    g.fillRoundRect(px + 7, py + 7, CELL - 14, CELL - 14, 10, 10);
-                    g.setColor(new Color(120, 70, 10));
-                    g.drawRoundRect(px + 7, py + 7, CELL - 14, CELL - 14, 10, 10);
-                    g.setColor(Color.WHITE);
-                    g.setFont(new Font("SansSerif", Font.BOLD, 22));
-                    drawCenteredString(g, "!", px, py, CELL, -1);
-                }
+                int py = PADDING + y * CELL + (int) bob;
+                if (p == Powerup.HEAL) drawPowerup(g, px, py, new Color(60, 220, 100), "+");
+                else drawPowerup(g, px, py, new Color(255, 170, 50), "!");
             }
         }
 
-        // Highlight valid action targets
         Assassin actor = state.currentPlayer();
         if (state.winnerIdx < 0) {
             if (state.selectedAction == Action.SHURIKEN) {
@@ -142,7 +215,7 @@ public class GamePanel extends JPanel {
                                 && state.hasLineOfSight(actor.x, actor.y, x, y)) {
                             int px = PADDING + x * CELL;
                             int py = PADDING + y * CELL;
-                            g.setColor(new Color(255, 220, 120, 30));
+                            g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 26));
                             g.fillRect(px, py, CELL, CELL);
                         }
                     }
@@ -153,9 +226,11 @@ public class GamePanel extends JPanel {
                     if (isValidTarget(actor, x, y)) {
                         int px = PADDING + x * CELL;
                         int py = PADDING + y * CELL;
-                        g.setColor(new Color(120, 220, 120, 90));
+                        double pulse = 0.5 + 0.5 * Math.sin(now * 0.008);
+                        int a = (int) (80 + 70 * pulse);
+                        g.setColor(new Color(80, 255, 140, a));
                         g.fillRect(px, py, CELL, CELL);
-                        g.setColor(new Color(150, 240, 150, 230));
+                        g.setColor(new Color(150, 255, 180, 230));
                         Stroke prev = g.getStroke();
                         g.setStroke(new BasicStroke(2f));
                         g.drawRect(px + 2, py + 2, CELL - 4, CELL - 4);
@@ -165,85 +240,207 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // Draw flash on hit
-        if (state.flashX >= 0 && state.flashEndTime > System.currentTimeMillis()) {
+        if (state.flashX >= 0 && state.flashEndTime > now) {
             int px = PADDING + state.flashX * CELL;
             int py = PADDING + state.flashY * CELL;
-            g.setColor(new Color(255, 80, 80, 180));
+            float t = (state.flashEndTime - now) / 400f;
+            g.setColor(new Color(255, 80, 80, (int) (200 * t)));
             g.fillRect(px, py, CELL, CELL);
         }
 
-        // Draw players (using animated visual position)
         for (Assassin a : state.players) {
             if (!a.isAlive()) continue;
             int px = PADDING + (int) Math.round(a.visX * CELL);
             int py = PADDING + (int) Math.round(a.visY * CELL);
-            int r = CELL - 16;
 
             if (a == state.currentPlayer() && state.winnerIdx < 0) {
-                g.setColor(new Color(255, 255, 200, 110));
-                g.fillOval(px + 3, py + 3, CELL - 6, CELL - 6);
+                double pulse = 0.6 + 0.4 * Math.sin(now * 0.006);
+                int ringA = (int) (110 * pulse);
+                g.setColor(new Color(a.color.getRed(), a.color.getGreen(), a.color.getBlue(), ringA));
+                g.fillOval(px + 1, py + 1, CELL - 2, CELL - 2);
             }
 
-            g.setColor(a.color);
-            g.fillOval(px + 8, py + 8, r, r);
-            g.setColor(Color.BLACK);
-            g.drawOval(px + 8, py + 8, r, r);
+            drawNinja(g, px, py, a);
 
             if (a.damageBoost > 0) {
                 Stroke prev = g.getStroke();
                 g.setStroke(new BasicStroke(3f));
-                g.setColor(new Color(255, 200, 70));
-                g.drawOval(px + 6, py + 6, CELL - 12, CELL - 12);
+                double dpulse = 0.7 + 0.3 * Math.sin(now * 0.012);
+                g.setColor(new Color(255, 200, 70, (int) (255 * dpulse)));
+                g.drawOval(px + 4, py + 4, CELL - 8, CELL - 8);
                 g.setStroke(prev);
             }
 
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("SansSerif", Font.BOLD, 18));
-            FontMetrics fm = g.getFontMetrics();
-            String letter = String.valueOf(a.displayNumber);
-            int tw = fm.stringWidth(letter);
-            int th = fm.getAscent();
-            g.drawString(letter, px + CELL / 2 - tw / 2, py + CELL / 2 + th / 3);
-
-            // HP bar above
-            int barW = CELL - 10;
-            int barH = 4;
-            int bx = px + 5;
-            int by = py + 2;
-            g.setColor(new Color(50, 50, 50));
-            g.fillRect(bx, by, barW, barH);
+            int barW = CELL - 8;
+            int barH = 5;
+            int bxh = px + 4;
+            int byh = py - 1;
+            g.setColor(new Color(0, 0, 0, 180));
+            g.fillRect(bxh - 1, byh - 1, barW + 2, barH + 2);
+            g.setColor(new Color(30, 36, 50));
+            g.fillRect(bxh, byh, barW, barH);
             int hpW = (int) (barW * (a.hp / (double) a.maxHp));
-            Color hpc = a.hp > a.maxHp * 0.5 ? new Color(80, 200, 80)
-                    : a.hp > a.maxHp * 0.25 ? new Color(220, 200, 80)
-                    : new Color(220, 80, 80);
+            Color hpc = a.hp > a.maxHp * 0.5 ? new Color(80, 255, 140)
+                    : a.hp > a.maxHp * 0.25 ? new Color(255, 220, 80)
+                    : new Color(255, 80, 110);
             g.setColor(hpc);
-            g.fillRect(bx, by, hpW, barH);
+            g.fillRect(bxh, byh, hpW, barH);
         }
 
-        // Game over overlay
+        if (now < state.shurikenEndTime) {
+            double t = (now - state.shurikenStartTime) / (double) (state.shurikenEndTime - state.shurikenStartTime);
+            t = Math.max(0, Math.min(1, t));
+            double cxF = state.shurikenFromX + (state.shurikenToX - state.shurikenFromX) * t;
+            double cyF = state.shurikenFromY + (state.shurikenToY - state.shurikenFromY) * t;
+            int xx = PADDING + (int) (cxF * CELL) + CELL / 2;
+            int yy = PADDING + (int) (cyF * CELL) + CELL / 2;
+            for (int i = 1; i <= 5; i++) {
+                double tt = Math.max(0, t - i * 0.06);
+                double tcxF = state.shurikenFromX + (state.shurikenToX - state.shurikenFromX) * tt;
+                double tcyF = state.shurikenFromY + (state.shurikenToY - state.shurikenFromY) * tt;
+                int tx = PADDING + (int) (tcxF * CELL) + CELL / 2;
+                int ty = PADDING + (int) (tcyF * CELL) + CELL / 2;
+                int alpha = 120 - i * 22;
+                g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), Math.max(0, alpha)));
+                g.fillOval(tx - 3, ty - 3, 6, 6);
+            }
+            drawShurikenProjectile(g, xx, yy, now);
+        }
+
+        for (Particle p : particles) {
+            float a = Math.max(0, Math.min(1, (float) (p.life / p.maxLife)));
+            g.setColor(new Color(
+                    p.color.getRed(), p.color.getGreen(), p.color.getBlue(),
+                    (int) (255 * a)));
+            g.fillOval((int) p.x - p.size, (int) p.y - p.size, p.size * 2, p.size * 2);
+        }
+
         if (state.winnerIdx >= 0) {
-            g.setColor(new Color(0, 0, 0, 170));
+            g.setColor(new Color(0, 0, 0, 200));
             g.fillRect(0, 0, getWidth(), getHeight());
-            g.setColor(state.players[state.winnerIdx].color);
-            g.setFont(new Font("SansSerif", Font.BOLD, 36));
-            String msg = state.players[state.winnerIdx].name + " VENCE!";
+            Color wc = state.players[state.winnerIdx].color;
+            String msg = state.players[state.winnerIdx].name.toUpperCase() + " VENCE!";
+            g.setFont(new Font("Monospaced", Font.BOLD, 38));
             FontMetrics fm = g.getFontMetrics();
             int tw = fm.stringWidth(msg);
-            g.drawString(msg, getWidth() / 2 - tw / 2, getHeight() / 2);
-            g.setColor(new Color(220, 220, 220));
-            g.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            String hint = "Clica em \"Novo Jogo\" para outra ronda.";
+            int tx = getWidth() / 2 - tw / 2;
+            int ty = getHeight() / 2;
+            for (int i = 6; i >= 1; i--) {
+                g.setColor(new Color(wc.getRed(), wc.getGreen(), wc.getBlue(), 28));
+                g.drawString(msg, tx - i, ty);
+                g.drawString(msg, tx + i, ty);
+            }
+            g.setColor(wc);
+            g.drawString(msg, tx, ty);
+            g.setColor(new Color(220, 240, 255));
+            g.setFont(new Font("Monospaced", Font.PLAIN, 14));
+            String hint = "[ Carrega em \"Novo Jogo\" para outra ronda ]";
             int hw = g.getFontMetrics().stringWidth(hint);
-            g.drawString(hint, getWidth() / 2 - hw / 2, getHeight() / 2 + 30);
+            g.drawString(hint, getWidth() / 2 - hw / 2, getHeight() / 2 + 32);
         }
+
+        g.dispose();
     }
 
-    private void drawCenteredString(Graphics2D g, String s, int px, int py, int size, int yOffset) {
+    private void drawStoneWall(Graphics2D g, int px, int py) {
+        GradientPaint gp = new GradientPaint(px, py, new Color(70, 60, 90),
+                px, py + CELL, new Color(40, 36, 60));
+        g.setPaint(gp);
+        g.fillRect(px, py, CELL, CELL);
+
+        g.setColor(new Color(25, 22, 38, 200));
+        int half = CELL / 2;
+        g.drawLine(px, py + half, px + CELL, py + half);
+        g.drawLine(px + half, py, px + half, py + half);
+        g.drawLine(px + half / 2, py + half, px + half / 2, py + CELL);
+        g.drawLine(px + half + half / 2, py + half, px + half + half / 2, py + CELL);
+
+        g.setColor(new Color(140, 130, 170, 180));
+        g.drawLine(px, py, px + CELL - 1, py);
+        g.drawLine(px, py, px, py + CELL - 1);
+        g.setColor(new Color(0, 0, 0, 160));
+        g.drawLine(px, py + CELL - 1, px + CELL - 1, py + CELL - 1);
+        g.drawLine(px + CELL - 1, py, px + CELL - 1, py + CELL - 1);
+
+        g.setColor(new Color(MAGENTA.getRed(), MAGENTA.getGreen(), MAGENTA.getBlue(), 60));
+        g.drawRect(px, py, CELL - 1, CELL - 1);
+    }
+
+    private void drawPowerup(Graphics2D g, int px, int py, Color base, String glyph) {
+        g.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), 70));
+        g.fillRoundRect(px + 4, py + 4, CELL - 8, CELL - 8, 14, 14);
+        GradientPaint gp = new GradientPaint(px, py, base.brighter(), px, py + CELL, base.darker());
+        g.setPaint(gp);
+        g.fillRoundRect(px + 9, py + 9, CELL - 18, CELL - 18, 10, 10);
+        g.setColor(new Color(255, 255, 255, 160));
+        g.drawRoundRect(px + 9, py + 9, CELL - 18, CELL - 18, 10, 10);
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Monospaced", Font.BOLD, 22));
         FontMetrics fm = g.getFontMetrics();
-        int tw = fm.stringWidth(s);
-        int th = fm.getAscent();
-        g.drawString(s, px + size / 2 - tw / 2, py + size / 2 + th / 3 + yOffset);
+        int tw = fm.stringWidth(glyph);
+        g.drawString(glyph, px + CELL / 2 - tw / 2, py + CELL / 2 + fm.getAscent() / 2 - 3);
+    }
+
+    private void drawNinja(Graphics2D g, int px, int py, Assassin a) {
+        int cx = px + CELL / 2;
+
+        g.setColor(new Color(a.color.getRed(), a.color.getGreen(), a.color.getBlue(), 70));
+        g.fillOval(px + 4, py + 6, CELL - 8, CELL - 8);
+
+        Polygon hood = new Polygon();
+        int top = py + 8;
+        int bottom = py + CELL - 4;
+        int left = px + 8;
+        int right = px + CELL - 8;
+        hood.addPoint(cx, top);
+        hood.addPoint(right, py + CELL / 2);
+        hood.addPoint(right - 2, bottom);
+        hood.addPoint(left + 2, bottom);
+        hood.addPoint(left, py + CELL / 2);
+        GradientPaint gp = new GradientPaint(cx, top, a.color.brighter(),
+                cx, bottom, a.color.darker());
+        g.setPaint(gp);
+        g.fillPolygon(hood);
+
+        g.setColor(new Color(0, 0, 0, 200));
+        g.setStroke(new BasicStroke(1.4f));
+        g.drawPolygon(hood);
+
+        int eyeY = py + CELL / 2 - 3;
+        g.setColor(new Color(0, 0, 0, 220));
+        g.fillRect(left + 4, eyeY, right - left - 8, 6);
+        g.setColor(CYAN);
+        g.fillRect(left + 6, eyeY + 1, right - left - 12, 3);
+        g.setColor(new Color(220, 255, 255, 200));
+        g.drawLine(left + 6, eyeY + 1, right - 7, eyeY + 1);
+
+        g.setColor(new Color(0, 0, 0, 200));
+        g.fillRoundRect(px + 4, py + CELL - 14, 14, 12, 4, 4);
+        g.setColor(a.color);
+        g.setFont(new Font("Monospaced", Font.BOLD, 11));
+        FontMetrics fm = g.getFontMetrics();
+        String n = String.valueOf(a.displayNumber);
+        int tw = fm.stringWidth(n);
+        g.drawString(n, px + 4 + 7 - tw / 2, py + CELL - 14 + fm.getAscent() - 1);
+    }
+
+    private void drawShurikenProjectile(Graphics2D g, int x, int y, long now) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.translate(x, y);
+        g2.rotate(now * 0.03);
+        int r = 11;
+        g2.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 90));
+        g2.fillOval(-r - 4, -r - 4, (r + 4) * 2, (r + 4) * 2);
+        int[] xs = {0, r / 3, r, r / 3, 0, -r / 3, -r, -r / 3};
+        int[] ys = {-r, -r / 3, 0, r / 3, r, r / 3, 0, -r / 3};
+        g2.setColor(new Color(220, 250, 255));
+        g2.fillPolygon(xs, ys, 8);
+        g2.setColor(CYAN);
+        g2.setStroke(new BasicStroke(1.6f));
+        g2.drawPolygon(xs, ys, 8);
+        g2.setColor(MAGENTA);
+        g2.fillOval(-2, -2, 4, 4);
+        g2.dispose();
     }
 
     private boolean isValidTarget(Assassin actor, int x, int y) {
@@ -270,5 +467,11 @@ public class GamePanel extends JPanel {
             default:
                 return false;
         }
+    }
+
+    private static class Particle {
+        double x, y, vx, vy, life, maxLife;
+        int size;
+        Color color;
     }
 }

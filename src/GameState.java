@@ -28,6 +28,14 @@ public class GameState {
     public int flashX = -1, flashY = -1;
     public long flashEndTime = 0;
 
+    // Shuriken projectile animation (cell-space). Active while now < shurikenEndTime.
+    public double shurikenFromX, shurikenFromY, shurikenToX, shurikenToY;
+    public long shurikenStartTime, shurikenEndTime;
+    // Monotonic counter incremented on each attack — lets the view detect new hits.
+    public int hitSeq = 0;
+    public int hitX = -1, hitY = -1;
+    public Action hitAction = null;
+
     private static final Color[] PLAYER_COLORS = {
             new Color(220, 60, 60),
             new Color(60, 130, 220),
@@ -157,6 +165,7 @@ public class GameState {
                 actor.damageBoost = 0;
                 target.damage(dmg);
                 triggerFlash(targetX, targetY);
+                triggerHit(targetX, targetY, Action.MELEE);
                 SoundFx.melee();
                 String msg = actor.name + " atacou " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
                 log.add(msg);
@@ -181,6 +190,8 @@ public class GameState {
                 actor.damageBoost = 0;
                 target.damage(dmg);
                 triggerFlash(targetX, targetY);
+                triggerHit(targetX, targetY, Action.SHURIKEN);
+                triggerShuriken(actor.x, actor.y, targetX, targetY);
                 SoundFx.shuriken();
                 String msg = actor.name + " atirou shuriken em " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
                 log.add(msg);
@@ -246,6 +257,23 @@ public class GameState {
         flashX = x;
         flashY = y;
         flashEndTime = System.currentTimeMillis() + 400;
+    }
+
+    private void triggerHit(int x, int y, Action a) {
+        hitX = x;
+        hitY = y;
+        hitAction = a;
+        hitSeq++;
+    }
+
+    private void triggerShuriken(int fromX, int fromY, int toX, int toY) {
+        shurikenFromX = fromX;
+        shurikenFromY = fromY;
+        shurikenToX = toX;
+        shurikenToY = toY;
+        shurikenStartTime = System.currentTimeMillis();
+        int dist = Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY));
+        shurikenEndTime = shurikenStartTime + 60L * Math.max(1, dist);
     }
 
     private void checkWinner() {

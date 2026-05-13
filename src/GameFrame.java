@@ -6,72 +6,75 @@ public class GameFrame extends JFrame {
     private final GameState state;
     private final GamePanel gamePanel;
     private final JLabel turnLabel;
-    private final JLabel[] hpLabels;
-    private final JLabel[] apLabels;
-    private final JLabel[] healLabels;
-    private final JPanel[] playerCards;
+    private final PlayerCard[] playerCards;
     private JTextArea logArea;
-    private final JButton[] actionButtons = new JButton[Action.values().length];
+    private final ActionButton[] actionButtons = new ActionButton[Action.values().length];
     private final JCheckBox soundToggle;
+
+    private static final Color BG = new Color(6, 10, 18);
+    private static final Color BG_PANEL = new Color(10, 16, 26);
+    private static final Color CYAN = new Color(40, 230, 255);
+    private static final Color CYAN_DIM = new Color(20, 110, 140);
+    private static final Color MAGENTA = new Color(255, 50, 180);
+    private static final Color TEXT = new Color(220, 240, 255);
+    private static final Color SUBTLE = new Color(120, 160, 190);
 
     public GameFrame(int numPlayers) {
         this.state = new GameState(numPlayers);
-        this.hpLabels = new JLabel[numPlayers];
-        this.apLabels = new JLabel[numPlayers];
-        this.healLabels = new JLabel[numPlayers];
-        this.playerCards = new JPanel[numPlayers];
+        this.playerCards = new PlayerCard[numPlayers];
 
         setTitle("Duelo dos Assassinos — " + numPlayers + " jogadores");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout(8, 8));
-        getContentPane().setBackground(new Color(15, 17, 22));
+        getContentPane().setBackground(BG);
 
-        // Top header
         JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(new Color(15, 17, 22));
-        top.setBorder(new EmptyBorder(8, 12, 4, 12));
-        JLabel title = new JLabel("Duelo dos Assassinos");
-        title.setForeground(new Color(230, 230, 240));
-        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        top.setBackground(BG);
+        top.setBorder(new EmptyBorder(10, 14, 6, 14));
+        JLabel title = new JLabel("// ASSASSIN'S DUEL");
+        title.setForeground(CYAN);
+        title.setFont(new Font("Monospaced", Font.BOLD, 22));
         top.add(title, BorderLayout.WEST);
         turnLabel = new JLabel();
-        turnLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
+        turnLabel.setFont(new Font("Monospaced", Font.BOLD, 14));
         top.add(turnLabel, BorderLayout.EAST);
         add(top, BorderLayout.NORTH);
 
-        // Center: game grid
         gamePanel = new GamePanel(state, this::handleActionResult);
         JPanel centerWrap = new JPanel();
-        centerWrap.setBackground(new Color(15, 17, 22));
+        centerWrap.setBackground(BG);
         centerWrap.add(gamePanel);
         add(centerWrap, BorderLayout.CENTER);
 
-        soundToggle = new JCheckBox("Som", true);
+        soundToggle = new JCheckBox("SOM", true);
         add(buildSidePanel(), BorderLayout.EAST);
         add(buildActionPanel(), BorderLayout.SOUTH);
 
         refresh();
         pack();
         setLocationRelativeTo(null);
+
+        // Refresh HUD on a timer so HP bars and turn timer stay in sync without action ticks
+        new Timer(80, e -> refreshLight()).start();
     }
 
     private JPanel buildSidePanel() {
         JPanel side = new JPanel();
         side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
-        side.setBackground(new Color(25, 27, 34));
-        side.setBorder(new EmptyBorder(8, 8, 8, 8));
-        side.setPreferredSize(new Dimension(290, 0));
+        side.setBackground(BG_PANEL);
+        side.setBorder(new EmptyBorder(10, 10, 10, 10));
+        side.setPreferredSize(new Dimension(310, 0));
 
         for (int i = 0; i < state.players.length; i++) {
-            playerCards[i] = buildPlayerCard(i);
+            playerCards[i] = new PlayerCard(state.players[i]);
             side.add(playerCards[i]);
             side.add(Box.createVerticalStrut(8));
         }
 
-        JLabel logTitle = new JLabel("Registo:");
-        logTitle.setForeground(Color.WHITE);
+        JLabel logTitle = new JLabel("// REGISTO");
+        logTitle.setForeground(CYAN);
         logTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        logTitle.setFont(new Font("SansSerif", Font.BOLD, 13));
+        logTitle.setFont(new Font("Monospaced", Font.BOLD, 12));
         side.add(logTitle);
         side.add(Box.createVerticalStrut(4));
 
@@ -79,7 +82,7 @@ public class GameFrame extends JFrame {
         logArea = createLogArea(logRows);
         JScrollPane sp = new JScrollPane(logArea);
         sp.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sp.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 70)));
+        sp.setBorder(BorderFactory.createLineBorder(CYAN_DIM));
         side.add(sp);
 
         return side;
@@ -88,68 +91,23 @@ public class GameFrame extends JFrame {
     private JTextArea createLogArea(int rows) {
         JTextArea ta = new JTextArea(rows, 22);
         ta.setEditable(false);
-        ta.setBackground(new Color(15, 17, 22));
-        ta.setForeground(new Color(200, 200, 210));
+        ta.setBackground(BG);
+        ta.setForeground(new Color(200, 220, 240));
         ta.setFont(new Font("Monospaced", Font.PLAIN, 11));
         ta.setLineWrap(true);
         ta.setWrapStyleWord(true);
+        ta.setCaretColor(CYAN);
         return ta;
     }
 
-    private JPanel buildPlayerCard(int idx) {
-        Assassin a = state.players[idx];
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(new Color(35, 38, 46));
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(a.color, 2),
-                new EmptyBorder(5, 8, 5, 8)
-        ));
-        card.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-
-        JLabel name = new JLabel(a.displayNumber + " — " + a.name);
-        name.setForeground(a.color);
-        name.setFont(new Font("SansSerif", Font.BOLD, 13));
-        card.add(name);
-
-        hpLabels[idx] = makeInfoLabel("");
-        apLabels[idx] = makeInfoLabel("");
-        healLabels[idx] = makeInfoLabel("");
-        card.add(hpLabels[idx]);
-        card.add(apLabels[idx]);
-        card.add(healLabels[idx]);
-        return card;
-    }
-
-    private JLabel makeInfoLabel(String txt) {
-        JLabel l = new JLabel(txt);
-        l.setForeground(new Color(220, 220, 230));
-        l.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        return l;
-    }
-
-    /** Configure a button so its background and foreground colors are actually painted on every L&F. */
-    private void styleButton(JButton b, Color bg, Color fg) {
-        b.setOpaque(true);
-        b.setBorderPainted(false);
-        b.setContentAreaFilled(true);
-        b.setFocusPainted(false);
-        b.setBackground(bg);
-        b.setForeground(fg);
-        b.setFont(new Font("SansSerif", Font.BOLD, 12));
-        b.setBorder(BorderFactory.createEmptyBorder(7, 12, 7, 12));
-    }
-
     private JPanel buildActionPanel() {
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 8));
-        bottom.setBackground(new Color(25, 27, 34));
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 10));
+        bottom.setBackground(BG_PANEL);
 
         Action[] acts = Action.values();
         for (int i = 0; i < acts.length; i++) {
             final Action a = acts[i];
-            JButton b = new JButton();
-            styleButton(b, new Color(60, 65, 80), Color.WHITE);
+            ActionButton b = new ActionButton(a);
             b.addActionListener(e -> {
                 state.selectedAction = a;
                 if (a == Action.HEAL) {
@@ -163,8 +121,7 @@ public class GameFrame extends JFrame {
             bottom.add(b);
         }
 
-        JButton end = new JButton("Terminar Turno");
-        styleButton(end, new Color(150, 60, 60), Color.WHITE);
+        JButton end = makeRetroButton("TERMINAR TURNO", new Color(255, 110, 130));
         end.addActionListener(e -> {
             state.endTurn();
             refresh();
@@ -172,8 +129,7 @@ public class GameFrame extends JFrame {
         });
         bottom.add(end);
 
-        JButton newGame = new JButton("Novo Jogo");
-        styleButton(newGame, new Color(60, 110, 70), Color.WHITE);
+        JButton newGame = makeRetroButton("NOVO JOGO", new Color(80, 255, 140));
         newGame.addActionListener(e -> {
             int n = Main.chooseNumPlayers();
             if (n < 0) return;
@@ -182,37 +138,67 @@ public class GameFrame extends JFrame {
         });
         bottom.add(newGame);
 
-        soundToggle.setBackground(new Color(25, 27, 34));
-        soundToggle.setForeground(Color.WHITE);
+        soundToggle.setBackground(BG_PANEL);
+        soundToggle.setForeground(TEXT);
         soundToggle.setOpaque(true);
         soundToggle.setFocusPainted(false);
-        soundToggle.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        soundToggle.setFont(new Font("Monospaced", Font.BOLD, 12));
         soundToggle.addActionListener(e -> SoundFx.setEnabled(soundToggle.isSelected()));
         bottom.add(soundToggle);
 
         return bottom;
     }
 
+    private JButton makeRetroButton(String label, Color accent) {
+        JButton b = new JButton(label) {
+            @Override
+            protected void paintComponent(Graphics g0) {
+                Graphics2D g = (Graphics2D) g0.create();
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                g.setColor(new Color(8, 14, 22));
+                g.fillRect(0, 0, w, h);
+                g.setColor(getModel().isRollover() ? accent : accent.darker());
+                g.setStroke(new BasicStroke(getModel().isRollover() ? 2.2f : 1.4f));
+                g.drawRect(2, 2, w - 5, h - 5);
+                g.fillPolygon(new int[]{0, 8, 0}, new int[]{0, 0, 8}, 3);
+                g.fillPolygon(new int[]{w, w - 8, w}, new int[]{h, h, h - 8}, 3);
+                FontMetrics fm = g.getFontMetrics(getFont());
+                String t = getText();
+                int tw = fm.stringWidth(t);
+                g.setFont(getFont());
+                g.setColor(getModel().isRollover() ? Color.WHITE : accent);
+                g.drawString(t, w / 2 - tw / 2, h / 2 + fm.getAscent() / 2 - 2);
+                g.dispose();
+            }
+        };
+        b.setOpaque(false);
+        b.setContentAreaFilled(false);
+        b.setBorderPainted(false);
+        b.setFocusPainted(false);
+        b.setFont(new Font("Monospaced", Font.BOLD, 12));
+        b.setPreferredSize(new Dimension(150, 38));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return b;
+    }
+
     private void handleActionResult(String msg) {
         refresh();
     }
 
+    private void refreshLight() {
+        for (PlayerCard pc : playerCards) pc.repaint();
+        for (ActionButton b : actionButtons) b.repaint();
+    }
+
     private void refresh() {
         Assassin curr = state.currentPlayer();
-        turnLabel.setText("Turno " + state.turnNumber + "  |  Vez de: " + curr.name + "  |  AP: " + curr.ap + "/" + curr.maxAp);
+        turnLabel.setText("TURNO " + state.turnNumber + " | " + curr.name.toUpperCase() + " | AP " + curr.ap + "/" + curr.maxAp);
         turnLabel.setForeground(curr.color);
 
         for (int i = 0; i < state.players.length; i++) {
-            Assassin a = state.players[i];
-            hpLabels[i].setText("HP: " + a.hp + " / " + a.maxHp + (a.damageBoost > 0 ? "  ⚡+" + a.damageBoost : ""));
-            apLabels[i].setText("AP: " + a.ap + " / " + a.maxAp);
-            healLabels[i].setText("Cura: " + (a.usedHeal ? "usada" : "disponível") + (a.isAlive() ? "" : "   ☠ ELIMINADO"));
-
-            playerCards[i].setBackground(a.isAlive() ? new Color(35, 38, 46) : new Color(28, 28, 32));
-            javax.swing.border.Border outline = (i == state.currentPlayerIdx && state.winnerIdx < 0)
-                    ? BorderFactory.createLineBorder(a.color, 3)
-                    : BorderFactory.createLineBorder(a.color, 2);
-            playerCards[i].setBorder(BorderFactory.createCompoundBorder(outline, new EmptyBorder(5, 8, 5, 8)));
+            playerCards[i].setIsCurrent(i == state.currentPlayerIdx && state.winnerIdx < 0);
+            playerCards[i].repaint();
         }
 
         StringBuilder sb = new StringBuilder();
@@ -223,13 +209,245 @@ public class GameFrame extends JFrame {
         logArea.setText(sb.toString());
         logArea.setCaretPosition(logArea.getDocument().getLength());
 
-        Action[] acts = Action.values();
-        for (int i = 0; i < acts.length; i++) {
-            Action a = acts[i];
-            boolean selected = (state.selectedAction == a);
-            String prefix = selected ? "▶ " : "";
-            actionButtons[i].setText(prefix + a.label + " (" + a.cost + " AP)");
-            actionButtons[i].setBackground(selected ? new Color(90, 110, 180) : new Color(60, 65, 80));
+        for (ActionButton b : actionButtons) {
+            b.setActionSelected(state.selectedAction == b.action);
+            b.repaint();
         }
+    }
+
+    // ---------- Player card with big HP bar ----------
+
+    private class PlayerCard extends JComponent {
+        private final Assassin a;
+        private boolean isCurrent = false;
+
+        PlayerCard(Assassin a) {
+            this.a = a;
+            setPreferredSize(new Dimension(290, 88));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 88));
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+        }
+
+        void setIsCurrent(boolean c) { this.isCurrent = c; }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            Graphics2D g = (Graphics2D) g0.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+
+            // Card background
+            g.setColor(a.isAlive() ? new Color(16, 22, 34) : new Color(12, 14, 20));
+            g.fillRect(0, 0, w, h);
+
+            // Side accent bar (player color)
+            g.setColor(a.color);
+            g.fillRect(0, 0, 4, h);
+
+            // Border (cyan if current, dim otherwise)
+            Color border = isCurrent ? CYAN : CYAN_DIM;
+            g.setColor(border);
+            g.setStroke(new BasicStroke(isCurrent ? 2.2f : 1.2f));
+            g.drawRect(1, 1, w - 3, h - 3);
+
+            // Avatar circle
+            int avx = 10, avy = 8, avs = 36;
+            g.setColor(new Color(a.color.getRed(), a.color.getGreen(), a.color.getBlue(), 80));
+            g.fillOval(avx - 2, avy - 2, avs + 4, avs + 4);
+            g.setColor(a.color);
+            g.fillOval(avx, avy, avs, avs);
+            g.setColor(Color.BLACK);
+            g.drawOval(avx, avy, avs, avs);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Monospaced", Font.BOLD, 18));
+            FontMetrics fm = g.getFontMetrics();
+            String n = String.valueOf(a.displayNumber);
+            int nw = fm.stringWidth(n);
+            g.drawString(n, avx + avs / 2 - nw / 2, avy + avs / 2 + fm.getAscent() / 2 - 2);
+
+            // Name
+            g.setColor(a.color);
+            g.setFont(new Font("Monospaced", Font.BOLD, 13));
+            g.drawString(a.name.toUpperCase(), 56, 22);
+
+            // Status
+            String status = a.isAlive()
+                    ? (a.usedHeal ? "CURA: usada" : "CURA: disponivel")
+                    : "☠ ELIMINADO";
+            g.setColor(a.isAlive() ? SUBTLE : new Color(255, 80, 110));
+            g.setFont(new Font("Monospaced", Font.PLAIN, 11));
+            g.drawString(status, 56, 38);
+
+            // Big HP bar
+            int barX = 10, barY = 52, barW = w - 20, barH = 14;
+            g.setColor(new Color(0, 0, 0, 200));
+            g.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+            g.setColor(new Color(28, 34, 48));
+            g.fillRect(barX, barY, barW, barH);
+            int hpW = (int) (barW * (a.hp / (double) a.maxHp));
+            Color hpc = a.hp > a.maxHp * 0.5 ? new Color(80, 255, 140)
+                    : a.hp > a.maxHp * 0.25 ? new Color(255, 220, 80)
+                    : new Color(255, 80, 110);
+            // gradient on HP fill
+            GradientPaint gp = new GradientPaint(barX, barY, hpc.brighter(), barX, barY + barH, hpc.darker());
+            g.setPaint(gp);
+            g.fillRect(barX, barY, hpW, barH);
+            // scanlines on bar
+            g.setColor(new Color(255, 255, 255, 30));
+            for (int y = barY + 1; y < barY + barH; y += 3) g.drawLine(barX, y, barX + hpW, y);
+            // outline
+            g.setColor(CYAN_DIM);
+            g.drawRect(barX, barY, barW, barH);
+
+            // HP text
+            String hpTxt = a.hp + " / " + a.maxHp;
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Monospaced", Font.BOLD, 11));
+            FontMetrics fm2 = g.getFontMetrics();
+            g.drawString(hpTxt, barX + barW / 2 - fm2.stringWidth(hpTxt) / 2, barY + barH - 3);
+
+            // AP pips
+            int apY = 72;
+            int pipR = 7;
+            g.setFont(new Font("Monospaced", Font.BOLD, 10));
+            g.setColor(SUBTLE);
+            g.drawString("AP", 10, apY + 5);
+            for (int i = 0; i < a.maxAp; i++) {
+                int px = 36 + i * (pipR * 2 + 4);
+                g.setColor(i < a.ap ? CYAN : new Color(30, 40, 56));
+                g.fillOval(px, apY - 2, pipR * 2, pipR * 2);
+                g.setColor(i < a.ap ? Color.WHITE : CYAN_DIM);
+                g.drawOval(px, apY - 2, pipR * 2, pipR * 2);
+            }
+
+            // Damage boost indicator
+            if (a.damageBoost > 0) {
+                g.setColor(new Color(255, 200, 70));
+                g.setFont(new Font("Monospaced", Font.BOLD, 11));
+                g.drawString("⚡+" + a.damageBoost, w - 56, apY + 6);
+            }
+
+            g.dispose();
+        }
+    }
+
+    // ---------- Action button with icon ----------
+
+    private class ActionButton extends JButton {
+        final Action action;
+        private boolean selectedAct = false;
+
+        ActionButton(Action a) {
+            this.action = a;
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setPreferredSize(new Dimension(108, 56));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setFont(new Font("Monospaced", Font.BOLD, 11));
+        }
+
+        void setActionSelected(boolean s) { this.selectedAct = s; }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            Graphics2D g = (Graphics2D) g0.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+
+            Color accent = colorFor(action);
+            g.setColor(new Color(8, 14, 22));
+            g.fillRect(0, 0, w, h);
+
+            if (selectedAct) {
+                g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 50));
+                g.fillRect(0, 0, w, h);
+            }
+
+            g.setColor(selectedAct ? accent : (getModel().isRollover() ? accent : accent.darker().darker()));
+            g.setStroke(new BasicStroke(selectedAct ? 2.4f : (getModel().isRollover() ? 2.0f : 1.4f)));
+            g.drawRect(2, 2, w - 5, h - 5);
+            g.fillPolygon(new int[]{0, 8, 0}, new int[]{0, 0, 8}, 3);
+            g.fillPolygon(new int[]{w, w - 8, w}, new int[]{h, h, h - 8}, 3);
+
+            // Icon (left side)
+            int iconX = 10, iconY = h / 2;
+            drawActionIcon(g, action, iconX, iconY, accent);
+
+            // Text (right side)
+            g.setColor(selectedAct ? Color.WHITE : accent);
+            g.setFont(getFont());
+            FontMetrics fm = g.getFontMetrics();
+            g.drawString(action.label.toUpperCase(), 36, h / 2 - 2);
+            g.setColor(selectedAct ? Color.WHITE : SUBTLE);
+            g.setFont(new Font("Monospaced", Font.PLAIN, 10));
+            g.drawString(action.cost + " AP", 36, h / 2 + fm.getAscent() - 2);
+
+            g.dispose();
+        }
+
+        private Color colorFor(Action a) {
+            switch (a) {
+                case MOVE: return CYAN;
+                case MELEE: return new Color(255, 110, 130);
+                case SHURIKEN: return new Color(120, 200, 255);
+                case HEAL: return new Color(80, 255, 140);
+                default: return CYAN;
+            }
+        }
+    }
+
+    /** Tiny pixel-style icon per action, drawn around (cx, cy). */
+    private static void drawActionIcon(Graphics2D g, Action a, int cx, int cy, Color accent) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.translate(cx, cy);
+        switch (a) {
+            case MOVE: {
+                g2.setColor(accent);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawLine(-7, 0, 7, 0);
+                g2.drawLine(0, -7, 0, 7);
+                int[] xs = {7, 2, 2};
+                int[] ys = {0, -4, 4};
+                g2.fillPolygon(xs, ys, 3);
+                break;
+            }
+            case MELEE: {
+                g2.setColor(accent);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawLine(-7, 7, 7, -7);
+                int[] xs = {7, 4, 7};
+                int[] ys = {-7, -4, -1};
+                g2.fillPolygon(xs, ys, 3);
+                g2.setColor(new Color(170, 170, 180));
+                g2.fillRect(-9, 5, 6, 4);
+                break;
+            }
+            case SHURIKEN: {
+                int r = 8;
+                int[] xs = {0, r / 3, r, r / 3, 0, -r / 3, -r, -r / 3};
+                int[] ys = {-r, -r / 3, 0, r / 3, r, r / 3, 0, -r / 3};
+                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 100));
+                g2.fillOval(-r - 2, -r - 2, (r + 2) * 2, (r + 2) * 2);
+                g2.setColor(accent);
+                g2.fillPolygon(xs, ys, 8);
+                g2.setColor(Color.WHITE);
+                g2.fillOval(-1, -1, 3, 3);
+                break;
+            }
+            case HEAL: {
+                g2.setColor(accent);
+                g2.fillRect(-2, -8, 4, 16);
+                g2.fillRect(-8, -2, 16, 4);
+                g2.setColor(Color.WHITE);
+                g2.drawRect(-2, -8, 4, 16);
+                g2.drawRect(-8, -2, 16, 4);
+                break;
+            }
+        }
+        g2.dispose();
     }
 }

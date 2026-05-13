@@ -7,75 +7,74 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 /**
- * Polished modal dialog for choosing 2..4 players.
- * Three big cards with the player tokens that would join. Click or press 2/3/4.
+ * Cyan cyberpunk modal for choosing 2..4 players. Three big cards with player tokens.
+ * Click a card or press 2/3/4. Esc to cancel.
  */
 public class StartDialog extends JDialog {
     private int chosenPlayers = -1;
 
-    private static final Color BG = new Color(15, 17, 22);
-    private static final Color CARD_BG = new Color(35, 38, 46);
-    private static final Color CARD_HOVER = new Color(55, 62, 80);
-    private static final Color BORDER = new Color(70, 75, 90);
-    private static final Color BORDER_HOVER = new Color(140, 160, 220);
+    private static final Color BG = new Color(6, 10, 18);
+    private static final Color CYAN = new Color(40, 230, 255);
+    private static final Color CYAN_DIM = new Color(20, 110, 140);
+    private static final Color MAGENTA = new Color(255, 50, 180);
+    private static final Color TEXT = new Color(230, 245, 255);
+    private static final Color SUBTLE = new Color(120, 160, 190);
 
     private static final Color[] PLAYER_COLORS = {
-            new Color(220, 60, 60),
-            new Color(60, 130, 220),
-            new Color(80, 200, 100),
-            new Color(200, 130, 230)
+            new Color(255, 70, 90),
+            new Color(40, 230, 255),
+            new Color(80, 255, 140),
+            new Color(220, 130, 255)
     };
 
     public StartDialog() {
         super((Frame) null, "Duelo dos Assassinos", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        getContentPane().setBackground(BG);
-        setLayout(new BorderLayout());
 
-        // Header
+        WelcomeDialog.CyberBackground root = new WelcomeDialog.CyberBackground();
+        root.setLayout(new BorderLayout());
+        setContentPane(root);
+
         JPanel header = new JPanel();
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        header.setBackground(BG);
+        header.setOpaque(false);
         header.setBorder(new EmptyBorder(34, 40, 22, 40));
 
-        JLabel title = new JLabel("DUELO DOS ASSASSINOS");
-        title.setFont(new Font("SansSerif", Font.BOLD, 28));
-        title.setForeground(new Color(240, 240, 245));
+        JLabel title = new JLabel("// SELECCIONA OS JOGADORES //");
+        title.setFont(new Font("Monospaced", Font.BOLD, 24));
+        title.setForeground(CYAN);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         header.add(title);
 
         header.add(Box.createVerticalStrut(8));
 
         JLabel subtitle = new JLabel("Escolhe quantos assassinos vão duelar");
-        subtitle.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        subtitle.setForeground(new Color(160, 165, 180));
+        subtitle.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        subtitle.setForeground(SUBTLE);
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
         header.add(subtitle);
 
-        add(header, BorderLayout.NORTH);
+        root.add(header, BorderLayout.NORTH);
 
-        // Cards row
-        JPanel center = new JPanel(new FlowLayout(FlowLayout.CENTER, 18, 0));
-        center.setBackground(BG);
+        JPanel center = new JPanel(new FlowLayout(FlowLayout.CENTER, 22, 0));
+        center.setOpaque(false);
         center.setBorder(new EmptyBorder(0, 30, 24, 30));
         for (int n = 2; n <= 4; n++) {
             center.add(buildChoiceCard(n));
         }
-        add(center, BorderLayout.CENTER);
+        root.add(center, BorderLayout.CENTER);
 
-        // Footer
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        footer.setBackground(BG);
+        footer.setOpaque(false);
         footer.setBorder(new EmptyBorder(0, 0, 18, 0));
 
-        JLabel hint = new JLabel("Atalho: tecla 2, 3 ou 4    ·    Esc para sair");
-        hint.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        hint.setForeground(new Color(120, 125, 140));
+        JLabel hint = new JLabel("[ Atalho: 2 / 3 / 4    ·    Esc para sair ]");
+        hint.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        hint.setForeground(SUBTLE);
         footer.add(hint);
 
-        add(footer, BorderLayout.SOUTH);
+        root.add(footer, BorderLayout.SOUTH);
 
-        // Keyboard shortcuts
         KeyAdapter ka = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -110,47 +109,74 @@ public class StartDialog extends JDialog {
                 int w = getWidth();
                 int h = getHeight();
 
-                // Background
-                g.setColor(hovered[0] ? CARD_HOVER : CARD_BG);
-                g.fillRoundRect(0, 0, w, h, 18, 18);
+                // Background (dark with subtle inset)
+                g.setColor(new Color(10, 16, 26, 235));
+                g.fillRect(0, 0, w, h);
 
-                // Border
-                Stroke prev = g.getStroke();
-                g.setStroke(new BasicStroke(hovered[0] ? 2.4f : 1.6f));
-                g.setColor(hovered[0] ? BORDER_HOVER : BORDER);
-                g.drawRoundRect(1, 1, w - 3, h - 3, 18, 18);
-                g.setStroke(prev);
+                // Outer border (cyan when hovered, dim otherwise) with cut corners
+                Color border = hovered[0] ? CYAN : CYAN_DIM;
+                g.setColor(border);
+                g.setStroke(new BasicStroke(hovered[0] ? 2.6f : 1.6f));
+                int cut = 14;
+                int[] xs = {cut, w - 1, w - 1, w - 1 - cut, 0, 0};
+                int[] ys = {0, 0, h - 1 - cut, h - 1, h - 1, cut};
+                g.drawPolygon(xs, ys, 6);
 
-                // Big number
-                g.setColor(new Color(245, 245, 250));
-                g.setFont(new Font("SansSerif", Font.BOLD, 64));
+                // Inner glow when hovered
+                if (hovered[0]) {
+                    g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 28));
+                    g.fillRect(4, 4, w - 8, h - 8);
+                }
+
+                // Top label
+                g.setColor(SUBTLE);
+                g.setFont(new Font("Monospaced", Font.BOLD, 11));
+                String top = "// PLAYERS";
+                g.drawString(top, 12, 22);
+
+                // Big number with glow
+                g.setFont(new Font("Monospaced", Font.BOLD, 78));
                 FontMetrics fm = g.getFontMetrics();
                 String s = String.valueOf(n);
                 int tw = fm.stringWidth(s);
-                int baselineY = 92;
+                int baselineY = 110;
+                // glow
+                g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 70));
+                for (int i = 5; i > 0; i--) {
+                    g.drawString(s, w / 2 - tw / 2 + i, baselineY);
+                    g.drawString(s, w / 2 - tw / 2 - i, baselineY);
+                }
+                g.setColor(hovered[0] ? Color.WHITE : new Color(220, 250, 255));
                 g.drawString(s, w / 2 - tw / 2, baselineY);
 
-                // Subtitle
-                g.setColor(new Color(170, 175, 190));
-                g.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                String label = "jogadores";
-                int lw = g.getFontMetrics().stringWidth(label);
-                g.drawString(label, w / 2 - lw / 2, baselineY + 22);
+                // Magenta accent line
+                g.setColor(MAGENTA);
+                g.setStroke(new BasicStroke(2f));
+                g.drawLine(w / 2 - 24, baselineY + 14, w / 2 + 24, baselineY + 14);
 
-                // Player tokens
+                g.setColor(SUBTLE);
+                g.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                String label = "JOGADORES";
+                int lw = g.getFontMetrics().stringWidth(label);
+                g.drawString(label, w / 2 - lw / 2, baselineY + 34);
+
+                // Player tokens row
                 int dot = 18;
                 int gap = 8;
                 int totalW = n * dot + (n - 1) * gap;
                 int startX = w / 2 - totalW / 2;
-                int dotY = h - 38;
+                int dotY = h - 40;
                 for (int i = 0; i < n; i++) {
                     int dx = startX + i * (dot + gap);
-                    g.setColor(PLAYER_COLORS[i]);
+                    Color pc = PLAYER_COLORS[i];
+                    g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), 90));
+                    g.fillOval(dx - 3, dotY - 3, dot + 6, dot + 6);
+                    g.setColor(pc);
                     g.fillOval(dx, dotY, dot, dot);
                     g.setColor(new Color(0, 0, 0, 130));
                     g.drawOval(dx, dotY, dot, dot);
                     g.setColor(Color.WHITE);
-                    g.setFont(new Font("SansSerif", Font.BOLD, 11));
+                    g.setFont(new Font("Monospaced", Font.BOLD, 11));
                     String num = String.valueOf(i + 1);
                     FontMetrics nm = g.getFontMetrics();
                     int nw = nm.stringWidth(num);
@@ -159,7 +185,7 @@ public class StartDialog extends JDialog {
             }
         };
         card.setOpaque(false);
-        card.setPreferredSize(new Dimension(160, 200));
+        card.setPreferredSize(new Dimension(170, 220));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         card.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { hovered[0] = true; card.repaint(); }
