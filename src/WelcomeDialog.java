@@ -37,7 +37,9 @@ public class WelcomeDialog extends JDialog {
     public WelcomeDialog() {
         super((Frame) null, "Assassin's Duel", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setIconImages(AppIcon.images());
         setSize(880, 680);
+        setResizable(false);
         setLocationRelativeTo(null);
         getContentPane().setBackground(BG);
         setLayout(new BorderLayout());

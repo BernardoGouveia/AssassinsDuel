@@ -21,6 +21,7 @@ public class GameState {
     public final List<String> log = new ArrayList<>();
     public int winnerIdx = -1;
     public int turnNumber = 1;
+    public boolean paused = false;
 
     private final Random rng = new Random();
 
@@ -126,6 +127,7 @@ public class GameState {
     /** Tries to perform the selected action on the target tile. Returns a status message. */
     public String performAction(int targetX, int targetY) {
         if (winnerIdx >= 0) return "Jogo terminado.";
+        if (paused) return "Jogo pausado.";
         Assassin actor = currentPlayer();
         Action a = selectedAction;
         int apBefore = actor.ap;
@@ -163,7 +165,9 @@ public class GameState {
                 int dmg = MELEE_DAMAGE + actor.damageBoost;
                 boolean hadBoost = actor.damageBoost > 0;
                 actor.damageBoost = 0;
+                int hpBefore = target.hp;
                 target.damage(dmg);
+                actor.dmgDealt += (hpBefore - target.hp);
                 triggerFlash(targetX, targetY);
                 triggerHit(targetX, targetY, Action.MELEE);
                 SoundFx.melee();
@@ -172,6 +176,7 @@ public class GameState {
                 log.add(msg);
                 if (!target.isAlive()) {
                     log.add(target.name + " caiu!");
+                    actor.kills++;
                     SoundFx.death();
                 }
                 checkWinner();
@@ -189,7 +194,9 @@ public class GameState {
                 int dmg = SHURIKEN_DAMAGE + actor.damageBoost;
                 boolean hadBoost = actor.damageBoost > 0;
                 actor.damageBoost = 0;
+                int hpBefore2 = target.hp;
                 target.damage(dmg);
+                actor.dmgDealt += (hpBefore2 - target.hp);
                 triggerFlash(targetX, targetY);
                 triggerHit(targetX, targetY, Action.SHURIKEN);
                 triggerShuriken(actor.x, actor.y, targetX, targetY);
@@ -297,7 +304,8 @@ public class GameState {
     }
 
     public void endTurn() {
-        if (winnerIdx >= 0) return;
+        if (winnerIdx >= 0 || paused) return;
+        players[currentPlayerIdx].turnsTaken++;
         int safety = 0;
         do {
             currentPlayerIdx = (currentPlayerIdx + 1) % players.length;

@@ -30,6 +30,8 @@ public class StartDialog extends JDialog {
     public StartDialog() {
         super((Frame) null, "Duelo dos Assassinos", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setIconImages(AppIcon.images());
+        setResizable(false);
 
         WelcomeDialog.CyberBackground root = new WelcomeDialog.CyberBackground();
         root.setLayout(new BorderLayout());

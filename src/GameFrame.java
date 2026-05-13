@@ -1,6 +1,7 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 
 public class GameFrame extends JFrame {
     private final GameState state;
@@ -27,8 +28,15 @@ public class GameFrame extends JFrame {
         this.state = new GameState(numPlayers);
         this.playerCards = new PlayerCard[numPlayers];
 
-        setTitle("Duelo dos Assassinos — " + numPlayers + " jogadores");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setTitle("Assassin's Duel — " + numPlayers + " jogadores");
+        setIconImages(AppIcon.images());
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                confirmQuit();
+            }
+        });
         setLayout(new BorderLayout(8, 8));
         getContentPane().setBackground(BG);
 
@@ -56,10 +64,85 @@ public class GameFrame extends JFrame {
 
         refresh();
         pack();
+        setResizable(false);
         setLocationRelativeTo(null);
 
         // Refresh HUD on a timer so HP bars and turn timer stay in sync without action ticks
         new Timer(80, e -> refreshLight()).start();
+
+        installKeyBindings();
+    }
+
+    private void installKeyBindings() {
+        InputMap im = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = getRootPane().getActionMap();
+
+        // Esc → pause toggle
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "togglePause");
+        am.put("togglePause", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (state.winnerIdx >= 0) return;
+                state.paused = !state.paused;
+                refresh();
+                gamePanel.repaint();
+            }
+        });
+
+        // 1..4 → select action
+        Action[] acts = Action.values();
+        for (int i = 0; i < acts.length; i++) {
+            final Action a = acts[i];
+            String key = "action" + i;
+            im.put(KeyStroke.getKeyStroke(KeyEvent.VK_1 + i, 0), key);
+            am.put(key, new AbstractAction() {
+                @Override
+                public void actionPerformed(java.awt.event.ActionEvent e) {
+                    if (state.paused || state.winnerIdx >= 0) return;
+                    state.selectedAction = a;
+                    if (a == Action.HEAL) {
+                        String msg = state.performAction(state.currentPlayer().x, state.currentPlayer().y);
+                        if (msg != null) handleActionResult(msg);
+                    }
+                    refresh();
+                    gamePanel.repaint();
+                }
+            });
+        }
+
+        // Space → end turn
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "endTurn");
+        am.put("endTurn", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (state.paused || state.winnerIdx >= 0) return;
+                state.endTurn();
+                refresh();
+                gamePanel.repaint();
+            }
+        });
+    }
+
+    private static String tooltipFor(Action a) {
+        switch (a) {
+            case MOVE: return "Move para uma casa adjacente (1 AP). Atalho: 1";
+            case MELEE: return "Ataque corpo-a-corpo: 30 dano em casa adjacente (1 AP). Atalho: 2";
+            case SHURIKEN: return "Shuriken: 20 dano, alcance 5, precisa linha de visão (2 AP). Atalho: 3";
+            case HEAL: return "Cura +30 HP, apenas uma vez por jogo (2 AP). Atalho: 4";
+            default: return "";
+        }
+    }
+
+    private void confirmQuit() {
+        if (state.winnerIdx < 0) {
+            int r = JOptionPane.showConfirmDialog(this,
+                    "Tens a certeza que queres sair do duelo a meio?",
+                    "Sair",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (r != JOptionPane.YES_OPTION) return;
+        }
+        System.exit(0);
     }
 
     private JPanel buildSidePanel() {
@@ -112,6 +195,7 @@ public class GameFrame extends JFrame {
         for (int i = 0; i < acts.length; i++) {
             final Action a = acts[i];
             ActionButton b = new ActionButton(a);
+            b.setToolTipText(tooltipFor(a));
             b.addActionListener(e -> {
                 state.selectedAction = a;
                 if (a == Action.HEAL) {
@@ -126,6 +210,7 @@ public class GameFrame extends JFrame {
         }
 
         JButton end = makeRetroButton("TERMINAR TURNO", new Color(255, 110, 130));
+        end.setToolTipText("Passa a vez ao próximo jogador (atalho: Espaço)");
         end.addActionListener(e -> {
             state.endTurn();
             refresh();
@@ -134,6 +219,7 @@ public class GameFrame extends JFrame {
         bottom.add(end);
 
         JButton newGame = makeRetroButton("NOVO JOGO", new Color(80, 255, 140));
+        newGame.setToolTipText("Começa um novo duelo");
         newGame.addActionListener(e -> {
             int n = Main.chooseNumPlayers();
             if (n < 0) return;

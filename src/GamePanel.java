@@ -322,31 +322,112 @@ public class GamePanel extends JPanel {
             g.fillOval((int) p.x - p.size, (int) p.y - p.size, p.size * 2, p.size * 2);
         }
 
-        if (state.winnerIdx >= 0) {
-            g.setColor(new Color(0, 0, 0, 200));
-            g.fillRect(0, 0, getWidth(), getHeight());
-            Color wc = state.players[state.winnerIdx].color;
-            String msg = state.players[state.winnerIdx].name.toUpperCase() + " VENCE!";
-            g.setFont(new Font("Monospaced", Font.BOLD, 38));
-            FontMetrics fm = g.getFontMetrics();
-            int tw = fm.stringWidth(msg);
-            int tx = getWidth() / 2 - tw / 2;
-            int ty = getHeight() / 2;
-            for (int i = 6; i >= 1; i--) {
-                g.setColor(new Color(wc.getRed(), wc.getGreen(), wc.getBlue(), 28));
-                g.drawString(msg, tx - i, ty);
-                g.drawString(msg, tx + i, ty);
-            }
-            g.setColor(wc);
-            g.drawString(msg, tx, ty);
-            g.setColor(new Color(220, 240, 255));
-            g.setFont(new Font("Monospaced", Font.PLAIN, 14));
-            String hint = "[ Carrega em \"Novo Jogo\" para outra ronda ]";
-            int hw = g.getFontMetrics().stringWidth(hint);
-            g.drawString(hint, getWidth() / 2 - hw / 2, getHeight() / 2 + 32);
-        }
+        if (state.winnerIdx >= 0) drawGameOver(g);
+        else if (state.paused) drawPauseOverlay(g);
 
         g.dispose();
+    }
+
+    private void drawPauseOverlay(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 180));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        g.setFont(new Font("Monospaced", Font.BOLD, 44));
+        String msg = "PAUSADO";
+        FontMetrics fm = g.getFontMetrics();
+        int tw = fm.stringWidth(msg);
+        int tx = getWidth() / 2 - tw / 2;
+        int ty = getHeight() / 2 - 8;
+        // red glow
+        for (int i = 6; i >= 1; i--) {
+            g.setColor(new Color(255, 30, 30, 35));
+            g.drawString(msg, tx - i, ty);
+            g.drawString(msg, tx + i, ty);
+        }
+        g.setColor(new Color(255, 80, 80));
+        g.drawString(msg, tx, ty);
+        g.setColor(new Color(255, 200, 80));
+        g.setFont(new Font("Monospaced", Font.BOLD, 13));
+        String hint = "[ Esc para continuar ]";
+        int hw = g.getFontMetrics().stringWidth(hint);
+        g.drawString(hint, getWidth() / 2 - hw / 2, getHeight() / 2 + 28);
+    }
+
+    private void drawGameOver(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 215));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        Color wc = state.players[state.winnerIdx].color;
+        String msg = state.players[state.winnerIdx].name.toUpperCase() + " VENCE!";
+        g.setFont(new Font("Monospaced", Font.BOLD, 36));
+        FontMetrics fm = g.getFontMetrics();
+        int tw = fm.stringWidth(msg);
+        int tx = getWidth() / 2 - tw / 2;
+        int ty = 70;
+        for (int i = 6; i >= 1; i--) {
+            g.setColor(new Color(wc.getRed(), wc.getGreen(), wc.getBlue(), 32));
+            g.drawString(msg, tx - i, ty);
+            g.drawString(msg, tx + i, ty);
+        }
+        g.setColor(wc);
+        g.drawString(msg, tx, ty);
+
+        // ----- stats table -----
+        int boxW = Math.min(getWidth() - 60, 460);
+        int boxX = (getWidth() - boxW) / 2;
+        int boxY = ty + 30;
+        int rowH = 26;
+        int boxH = 50 + state.players.length * rowH;
+
+        // Box background
+        g.setColor(new Color(18, 6, 8, 230));
+        g.fillRoundRect(boxX, boxY, boxW, boxH, 12, 12);
+        g.setColor(new Color(255, 60, 60, 180));
+        g.setStroke(new BasicStroke(1.6f));
+        g.drawRoundRect(boxX, boxY, boxW, boxH, 12, 12);
+
+        // Header
+        g.setColor(new Color(255, 200, 80));
+        g.setFont(new Font("Monospaced", Font.BOLD, 12));
+        int colName = boxX + 14;
+        int colDealt = boxX + 200;
+        int colTaken = boxX + 280;
+        int colKills = boxX + 360;
+        int colTurns = boxX + 410;
+        int headerY = boxY + 22;
+        g.drawString("JOGADOR", colName, headerY);
+        g.drawString("DANO", colDealt, headerY);
+        g.drawString("SOFREU", colTaken, headerY);
+        g.drawString("K", colKills, headerY);
+        g.drawString("TURNOS", colTurns, headerY);
+        g.setColor(new Color(255, 60, 60, 100));
+        g.drawLine(boxX + 14, headerY + 6, boxX + boxW - 14, headerY + 6);
+
+        // Rows
+        g.setFont(new Font("Monospaced", Font.BOLD, 12));
+        for (int i = 0; i < state.players.length; i++) {
+            Assassin a = state.players[i];
+            int y = headerY + 22 + i * rowH;
+            // Side accent
+            g.setColor(a.color);
+            g.fillRect(boxX + 6, y - 12, 3, 16);
+
+            String nm = a.name;
+            if (i == state.winnerIdx) nm = "★ " + nm;
+            else if (!a.isAlive()) nm = "☠ " + nm;
+            g.setColor(a.isAlive() ? a.color : new Color(160, 130, 130));
+            g.drawString(nm, colName, y);
+            g.setColor(new Color(240, 220, 220));
+            g.drawString(String.valueOf(a.dmgDealt), colDealt, y);
+            g.drawString(String.valueOf(a.dmgTaken), colTaken, y);
+            g.drawString(String.valueOf(a.kills), colKills, y);
+            g.drawString(String.valueOf(a.turnsTaken), colTurns, y);
+        }
+
+        // Hint
+        g.setColor(new Color(255, 200, 80));
+        g.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        String hint = "[ Carrega em \"Novo Jogo\" para outra ronda ]";
+        int hw = g.getFontMetrics().stringWidth(hint);
+        g.drawString(hint, getWidth() / 2 - hw / 2, boxY + boxH + 26);
     }
 
     private void drawStoneWall(Graphics2D g, int px, int py) {
