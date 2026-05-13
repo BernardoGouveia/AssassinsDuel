@@ -123,11 +123,11 @@ public class WelcomeDialog extends JDialog {
         btnRow.setOpaque(false);
         btnRow.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton rulesBtn = makeCyberButton("REGRAS DO JOGO", RED_BRIGHT);
+        JButton rulesBtn = makeCyberButton("REGRAS DO JOGO", GOLD);
         rulesBtn.addActionListener(e -> showCard("rules"));
         btnRow.add(rulesBtn);
 
-        JButton quit = makeCyberButton("SAIR", GOLD);
+        JButton quit = makeCyberButton("SAIR", RED_BRIGHT);
         quit.addActionListener(e -> { shouldStart = false; dispose(); });
         btnRow.add(quit);
 
@@ -514,7 +514,7 @@ public class WelcomeDialog extends JDialog {
             int line1H = titleLine1.getHeight() * scale;
             int titleAreaTop = 38;
             int line1X = w / 2 - line1W / 2;
-            int line2X = w / 2 - line2W / 2 + 30; // slight right offset like the reference
+            int line2X = w / 2 - line2W / 2;
             int line1Y = titleAreaTop;
             int line2Y = titleAreaTop + line1H - 20;
 

@@ -355,13 +355,31 @@ public class GamePanel extends JPanel {
     private void drawGameOver(Graphics2D g) {
         g.setColor(new Color(0, 0, 0, 215));
         g.fillRect(0, 0, getWidth(), getHeight());
+
         Color wc = state.players[state.winnerIdx].color;
         String msg = state.players[state.winnerIdx].name.toUpperCase() + " VENCE!";
-        g.setFont(new Font("Monospaced", Font.BOLD, 36));
+        Font titleFont = new Font("Monospaced", Font.BOLD, 36);
+        Font headerFont = new Font("Monospaced", Font.BOLD, 12);
+        Font hintFont = new Font("Monospaced", Font.PLAIN, 13);
+
+        int titleH = 36;
+        int gapAfterTitle = 30;
+        int boxW = Math.min(getWidth() - 60, 460);
+        int rowH = 26;
+        int boxH = 50 + state.players.length * rowH;
+        int gapAfterBox = 26;
+        int hintH = 16;
+        int totalH = titleH + gapAfterTitle + boxH + gapAfterBox + hintH;
+
+        // Vertically centre the whole block.
+        int blockTop = Math.max(20, (getHeight() - totalH) / 2);
+
+        // ----- title -----
+        g.setFont(titleFont);
         FontMetrics fm = g.getFontMetrics();
         int tw = fm.stringWidth(msg);
         int tx = getWidth() / 2 - tw / 2;
-        int ty = 70;
+        int ty = blockTop + titleH;
         for (int i = 6; i >= 1; i--) {
             g.setColor(new Color(wc.getRed(), wc.getGreen(), wc.getBlue(), 32));
             g.drawString(msg, tx - i, ty);
@@ -371,22 +389,17 @@ public class GamePanel extends JPanel {
         g.drawString(msg, tx, ty);
 
         // ----- stats table -----
-        int boxW = Math.min(getWidth() - 60, 460);
         int boxX = (getWidth() - boxW) / 2;
-        int boxY = ty + 30;
-        int rowH = 26;
-        int boxH = 50 + state.players.length * rowH;
+        int boxY = ty + gapAfterTitle;
 
-        // Box background
         g.setColor(new Color(18, 6, 8, 230));
         g.fillRoundRect(boxX, boxY, boxW, boxH, 12, 12);
         g.setColor(new Color(255, 60, 60, 180));
         g.setStroke(new BasicStroke(1.6f));
         g.drawRoundRect(boxX, boxY, boxW, boxH, 12, 12);
 
-        // Header
+        g.setFont(headerFont);
         g.setColor(new Color(255, 200, 80));
-        g.setFont(new Font("Monospaced", Font.BOLD, 12));
         int colName = boxX + 14;
         int colDealt = boxX + 200;
         int colTaken = boxX + 280;
@@ -401,12 +414,9 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(255, 60, 60, 100));
         g.drawLine(boxX + 14, headerY + 6, boxX + boxW - 14, headerY + 6);
 
-        // Rows
-        g.setFont(new Font("Monospaced", Font.BOLD, 12));
         for (int i = 0; i < state.players.length; i++) {
             Assassin a = state.players[i];
             int y = headerY + 22 + i * rowH;
-            // Side accent
             g.setColor(a.color);
             g.fillRect(boxX + 6, y - 12, 3, 16);
 
@@ -422,12 +432,12 @@ public class GamePanel extends JPanel {
             g.drawString(String.valueOf(a.turnsTaken), colTurns, y);
         }
 
-        // Hint
+        // ----- hint -----
         g.setColor(new Color(255, 200, 80));
-        g.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        g.setFont(hintFont);
         String hint = "[ Carrega em \"Novo Jogo\" para outra ronda ]";
         int hw = g.getFontMetrics().stringWidth(hint);
-        g.drawString(hint, getWidth() / 2 - hw / 2, boxY + boxH + 26);
+        g.drawString(hint, getWidth() / 2 - hw / 2, boxY + boxH + gapAfterBox);
     }
 
     private void drawStoneWall(Graphics2D g, int px, int py) {

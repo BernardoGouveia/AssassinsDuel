@@ -161,32 +161,19 @@ public class StartDialog extends JDialog {
                 int lw = g.getFontMetrics().stringWidth(label);
                 g.drawString(label, w / 2 - lw / 2, baselineY + 34);
 
-                // Player tokens row
-                int dot = 18;
+                // Mini ninja tokens (matches the in-game assassin sprite)
+                int sz = 30;
                 int gap = 8;
-                int totalW = n * dot + (n - 1) * gap;
+                int totalW = n * sz + (n - 1) * gap;
                 int startX = w / 2 - totalW / 2;
-                int dotY = h - 40;
+                int ninjaY = h - sz - 14;
                 for (int i = 0; i < n; i++) {
-                    int dx = startX + i * (dot + gap);
-                    Color pc = PLAYER_COLORS[i];
-                    g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), 90));
-                    g.fillOval(dx - 3, dotY - 3, dot + 6, dot + 6);
-                    g.setColor(pc);
-                    g.fillOval(dx, dotY, dot, dot);
-                    g.setColor(new Color(0, 0, 0, 130));
-                    g.drawOval(dx, dotY, dot, dot);
-                    g.setColor(Color.WHITE);
-                    g.setFont(new Font("Monospaced", Font.BOLD, 11));
-                    String num = String.valueOf(i + 1);
-                    FontMetrics nm = g.getFontMetrics();
-                    int nw = nm.stringWidth(num);
-                    g.drawString(num, dx + dot / 2 - nw / 2, dotY + dot / 2 + nm.getAscent() / 2 - 2);
+                    drawMiniNinja(g, startX + i * (sz + gap), ninjaY, sz, PLAYER_COLORS[i], i + 1);
                 }
             }
         };
         card.setOpaque(false);
-        card.setPreferredSize(new Dimension(170, 220));
+        card.setPreferredSize(new Dimension(190, 240));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         card.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { hovered[0] = true; card.repaint(); }
@@ -198,5 +185,55 @@ public class StartDialog extends JDialog {
 
     public int getChosenPlayers() {
         return chosenPlayers;
+    }
+
+    /** Mini version of the in-game assassin sprite: hood with gradient + gold visor + number badge. */
+    private static void drawMiniNinja(Graphics2D g, int x, int y, int size, Color c, int number) {
+        int cx = x + size / 2;
+        int top = y + 3;
+        int bottom = y + size - 3;
+        int left = x + 3;
+        int right = x + size - 3;
+
+        // Outer glow
+        g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 80));
+        g.fillOval(x, y, size, size);
+
+        // Hood polygon with gradient
+        Polygon hood = new Polygon();
+        hood.addPoint(cx, top);
+        hood.addPoint(right, y + size / 2);
+        hood.addPoint(right - 1, bottom);
+        hood.addPoint(left + 1, bottom);
+        hood.addPoint(left, y + size / 2);
+        GradientPaint gp = new GradientPaint(cx, top, c.brighter(),
+                cx, bottom, c.darker());
+        g.setPaint(gp);
+        g.fillPolygon(hood);
+        g.setColor(new Color(0, 0, 0, 220));
+        g.setStroke(new BasicStroke(1f));
+        g.drawPolygon(hood);
+
+        // Gold visor
+        int eyeY = y + size / 2 - 2;
+        g.setColor(new Color(0, 0, 0, 230));
+        g.fillRect(left + 2, eyeY, right - left - 4, 4);
+        g.setColor(GOLD);
+        g.fillRect(left + 3, eyeY + 1, right - left - 6, 2);
+        g.setColor(new Color(255, 240, 200, 220));
+        g.drawLine(left + 3, eyeY + 1, right - 4, eyeY + 1);
+
+        // Number badge at bottom-right
+        int badgeS = 11;
+        int bx = x + size - badgeS;
+        int by = y + size - badgeS;
+        g.setColor(new Color(0, 0, 0, 220));
+        g.fillRoundRect(bx, by, badgeS, badgeS, 3, 3);
+        g.setColor(c);
+        g.setFont(new Font("Monospaced", Font.BOLD, 9));
+        FontMetrics fm = g.getFontMetrics();
+        String s = String.valueOf(number);
+        int sw = fm.stringWidth(s);
+        g.drawString(s, bx + badgeS / 2 - sw / 2, by + badgeS - 3);
     }
 }

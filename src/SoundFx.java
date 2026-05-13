@@ -82,13 +82,17 @@ public class SoundFx {
         });
     }
 
-    /** Damage thud — punchy low sub-tone with a quick noise click. */
+    /** Damage thwack — sharp transient + meaty mid-low thud + crunchy noise. */
     public static void damage() {
         if (!enabled) return;
         async(() -> {
-            byte[] thud = renderSweep(200, 60, 110, 0.32, 0.002, 0.060, 0.7);
-            byte[] click = renderNoise(35, 0.20, 0.001, 0.020, 1200);
-            play(mix(thud, click));
+            // Sharp high-freq transient so the hit cuts through melee/shuriken sounds.
+            byte[] transient_ = renderSweep(2200, 700, 35, 0.42, 0.0005, 0.020, 0.4);
+            // Meaty mid-low body that sustains.
+            byte[] body = renderSweep(380, 95, 160, 0.40, 0.002, 0.110, 0.6);
+            // Crunchy noise overlay (gives it the "ow" feel).
+            byte[] noise = renderNoise(90, 0.28, 0.001, 0.050, 2400);
+            play(mix(mix(transient_, body), noise));
         });
     }
 
