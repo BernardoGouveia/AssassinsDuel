@@ -282,7 +282,7 @@ public class GameState {
         }
     }
 
-    /** Bresenham line of sight: walls block. */
+    /** Bresenham line of sight: walls block. Diagonal steps cannot squeeze between two walls. */
     public boolean hasLineOfSight(int x0, int y0, int x1, int y1) {
         int dx = Math.abs(x1 - x0);
         int dy = Math.abs(y1 - y0);
@@ -292,8 +292,18 @@ public class GameState {
         int cx = x0, cy = y0;
         while (true) {
             int e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; cx += sx; }
-            if (e2 < dx) { err += dx; cy += sy; }
+            boolean stepX = e2 > -dy;
+            boolean stepY = e2 < dx;
+            if (stepX && stepY) {
+                // Diagonal step: forbid passing between two ortho walls (e.g., L-corner).
+                if (isWall(cx + sx, cy) && isWall(cx, cy + sy)) return false;
+                err -= dy; cx += sx;
+                err += dx; cy += sy;
+            } else if (stepX) {
+                err -= dy; cx += sx;
+            } else if (stepY) {
+                err += dx; cy += sy;
+            }
             if (cx == x1 && cy == y1) return true;
             if (isWall(cx, cy)) return false;
         }

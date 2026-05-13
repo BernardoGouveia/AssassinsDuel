@@ -11,7 +11,6 @@ public class Main {
             welcome.setVisible(true);
             if (!welcome.shouldStart()) {
                 System.exit(0);
-                return;
             }
             int numPlayers = chooseNumPlayers();
             if (numPlayers < 0) {
