@@ -211,7 +211,7 @@ public class WelcomeDialog extends JDialog {
                         "  Vence o último assassino vivo.\n\n" +
                         "ESTATÍSTICAS BASE\n" +
                         "  > 150 HP\n" +
-                        "  > 3 AP (pontos de acção) por turno\n\n" +
+                        "  > 5 AP (pontos de acção) por turno\n\n" +
                         "ACÇÕES\n" +
                         "  > Mover (1 AP): para uma casa adjacente livre.\n" +
                         "  > Corpo-a-Corpo (1 AP): 30 dano num adversário adjacente.\n" +
