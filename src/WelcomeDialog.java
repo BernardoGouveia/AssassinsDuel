@@ -21,11 +21,18 @@ public class WelcomeDialog extends JDialog {
     private final CardLayout cardLayout;
     private String currentCard = "welcome";
 
-    static final Color BG = new Color(6, 10, 18);
-    static final Color BG_DEEP = new Color(2, 4, 10);
-    static final Color CYAN = new Color(40, 230, 255);
-    static final Color MAGENTA = new Color(255, 50, 180);
-    static final Color SUBTLE = new Color(140, 170, 200);
+    // Arcade red palette — shared with the rest of the game.
+    static final Color BG = new Color(12, 4, 6);
+    static final Color BG_DEEP = new Color(8, 2, 4);
+    static final Color RED_BRIGHT = new Color(255, 60, 60);
+    static final Color RED_DIM = new Color(140, 30, 35);
+    static final Color RED_GLOW = new Color(255, 30, 30);
+    static final Color GOLD = new Color(255, 200, 80);
+    static final Color STEEL = new Color(220, 220, 230);
+    static final Color SUBTLE = new Color(180, 130, 130);
+    // Kept for backwards compatibility inside this file (used by buttons that take "accent" args).
+    static final Color CYAN = RED_BRIGHT;
+    static final Color MAGENTA = GOLD;
 
     public WelcomeDialog() {
         super((Frame) null, "Assassin's Duel", true);
@@ -105,7 +112,7 @@ public class WelcomeDialog extends JDialog {
 
         JLabel hint = center(new JLabel("[ CLICA OU PRESSIONA QUALQUER TECLA PARA COMEÇAR ]"));
         hint.setFont(new Font("Monospaced", Font.BOLD, 12));
-        hint.setForeground(CYAN);
+        hint.setForeground(GOLD);
         content.add(hint);
 
         content.add(Box.createVerticalStrut(20));
@@ -114,11 +121,11 @@ public class WelcomeDialog extends JDialog {
         btnRow.setOpaque(false);
         btnRow.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton rulesBtn = makeCyberButton("REGRAS DO JOGO", CYAN);
+        JButton rulesBtn = makeCyberButton("REGRAS DO JOGO", RED_BRIGHT);
         rulesBtn.addActionListener(e -> showCard("rules"));
         btnRow.add(rulesBtn);
 
-        JButton quit = makeCyberButton("SAIR", new Color(255, 80, 110));
+        JButton quit = makeCyberButton("SAIR", GOLD);
         quit.addActionListener(e -> { shouldStart = false; dispose(); });
         btnRow.add(quit);
 
@@ -175,14 +182,14 @@ public class WelcomeDialog extends JDialog {
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(12, 12, 4, 12));
 
-        JButton back = makeCyberButton("← VOLTAR", CYAN);
+        JButton back = makeCyberButton("← VOLTAR", RED_BRIGHT);
         back.setPreferredSize(new Dimension(130, 38));
         back.addActionListener(e -> showCard("welcome"));
         header.add(back, BorderLayout.WEST);
 
         JLabel title = new JLabel("// REGRAS DO JOGO //", SwingConstants.CENTER);
         title.setFont(new Font("Monospaced", Font.BOLD, 22));
-        title.setForeground(CYAN);
+        title.setForeground(RED_BRIGHT);
         header.add(title, BorderLayout.CENTER);
 
         header.add(Box.createHorizontalStrut(130), BorderLayout.EAST);
@@ -315,46 +322,53 @@ public class WelcomeDialog extends JDialog {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
 
-            GradientPaint gp = new GradientPaint(0, 0, BG_DEEP, 0, h, new Color(10, 18, 32));
+            // Dark red-tinged gradient
+            GradientPaint gp = new GradientPaint(0, 0, BG_DEEP, 0, h, new Color(28, 8, 12));
             g.setPaint(gp);
             g.fillRect(0, 0, w, h);
 
-            g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 22));
+            // Red grid
+            g.setColor(new Color(RED_GLOW.getRed(), RED_GLOW.getGreen(), RED_GLOW.getBlue(), 22));
             int step = 40;
             for (int x = 0; x < w; x += step) g.drawLine(x, 0, x, h);
             for (int y = 0; y < h; y += step) g.drawLine(0, y, w, y);
 
+            // Red horizon w/ gold echo
             int horizon = (int) (h * 0.72);
-            g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 80));
+            g.setColor(new Color(RED_GLOW.getRed(), RED_GLOW.getGreen(), RED_GLOW.getBlue(), 90));
             g.setStroke(new BasicStroke(1.2f));
             g.drawLine(0, horizon, w, horizon);
-            g.setColor(new Color(MAGENTA.getRed(), MAGENTA.getGreen(), MAGENTA.getBlue(), 40));
+            g.setColor(new Color(GOLD.getRed(), GOLD.getGreen(), GOLD.getBlue(), 40));
             g.drawLine(0, horizon + 2, w, horizon + 2);
 
             for (Shuriken s : shurikens) drawShuriken(g, s);
 
-            g.setColor(new Color(0, 0, 0, 24));
+            g.setColor(new Color(0, 0, 0, 30));
             for (int y = 0; y < h; y += 3) g.drawLine(0, y, w, y);
 
             g.dispose();
         }
 
+        // Steel shuriken with red glow halo (instead of cyan)
         private void drawShuriken(Graphics2D g, Shuriken s) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.translate(s.x, s.y);
             g2.rotate(s.angle);
             int r = s.size;
             int a = (int) (s.alpha * 255);
-            g2.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), a / 3));
-            g2.fillOval(-r - 4, -r - 4, (r + 4) * 2, (r + 4) * 2);
+            g2.setColor(new Color(RED_GLOW.getRed(), RED_GLOW.getGreen(), RED_GLOW.getBlue(), a / 2));
+            g2.fillOval(-r - 5, -r - 5, (r + 5) * 2, (r + 5) * 2);
             int[] xs = {0, r / 3, r, r / 3, 0, -r / 3, -r, -r / 3};
             int[] ys = {-r, -r / 3, 0, r / 3, r, r / 3, 0, -r / 3};
-            g2.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), a));
+            // steel body
+            g2.setColor(new Color(STEEL.getRed(), STEEL.getGreen(), STEEL.getBlue(), a));
             g2.fillPolygon(xs, ys, 8);
-            g2.setColor(new Color(220, 250, 255, Math.min(255, a + 60)));
+            // bright rim
+            g2.setColor(new Color(255, 240, 240, Math.min(255, a + 60)));
             g2.setStroke(new BasicStroke(1.2f));
             g2.drawPolygon(xs, ys, 8);
-            g2.setColor(new Color(255, 255, 255, a));
+            // red center stud
+            g2.setColor(new Color(RED_BRIGHT.getRed(), RED_BRIGHT.getGreen(), RED_BRIGHT.getBlue(), a));
             g2.fillOval(-2, -2, 4, 4);
             g2.dispose();
         }

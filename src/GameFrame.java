@@ -11,13 +11,17 @@ public class GameFrame extends JFrame {
     private final ActionButton[] actionButtons = new ActionButton[Action.values().length];
     private final JCheckBox soundToggle;
 
-    private static final Color BG = new Color(6, 10, 18);
-    private static final Color BG_PANEL = new Color(10, 16, 26);
-    private static final Color CYAN = new Color(40, 230, 255);
-    private static final Color CYAN_DIM = new Color(20, 110, 140);
-    private static final Color MAGENTA = new Color(255, 50, 180);
-    private static final Color TEXT = new Color(220, 240, 255);
-    private static final Color SUBTLE = new Color(120, 160, 190);
+    private static final Color BG = new Color(12, 4, 6);
+    private static final Color BG_PANEL = new Color(18, 8, 10);
+    private static final Color RED_BRIGHT = new Color(255, 60, 60);
+    private static final Color RED_DIM = new Color(140, 30, 35);
+    private static final Color GOLD = new Color(255, 200, 80);
+    private static final Color TEXT = new Color(255, 220, 220);
+    private static final Color SUBTLE = new Color(190, 130, 130);
+    // Legacy aliases (so the rest of the file's references resolve to the new palette)
+    private static final Color CYAN = RED_BRIGHT;
+    private static final Color CYAN_DIM = RED_DIM;
+    private static final Color MAGENTA = GOLD;
 
     public GameFrame(int numPlayers) {
         this.state = new GameState(numPlayers);
@@ -390,11 +394,11 @@ public class GameFrame extends JFrame {
 
         private Color colorFor(Action a) {
             switch (a) {
-                case MOVE: return CYAN;
-                case MELEE: return new Color(255, 110, 130);
-                case SHURIKEN: return new Color(120, 200, 255);
-                case HEAL: return new Color(80, 255, 140);
-                default: return CYAN;
+                case MOVE: return GOLD;                       // gold for movement
+                case MELEE: return RED_BRIGHT;                // bright red for aggressive
+                case SHURIKEN: return new Color(220, 220, 235); // steel/silver
+                case HEAL: return new Color(80, 220, 130);    // green still reads as heal
+                default: return RED_BRIGHT;
             }
         }
     }

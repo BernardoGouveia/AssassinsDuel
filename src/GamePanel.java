@@ -16,10 +16,17 @@ public class GamePanel extends JPanel {
     public static final int PADDING = 14;
     private static final double MOVE_DURATION_MS = 150.0;
 
-    private static final Color CYAN = new Color(40, 230, 255);
-    private static final Color MAGENTA = new Color(255, 50, 180);
-    private static final Color GRID_DARK_A = new Color(14, 20, 32);
-    private static final Color GRID_DARK_B = new Color(10, 16, 26);
+    // Arcade red palette
+    private static final Color RED_BRIGHT = new Color(255, 60, 60);
+    private static final Color RED_DIM = new Color(140, 30, 35);
+    private static final Color RED_GLOW = new Color(255, 30, 30);
+    private static final Color GOLD = new Color(255, 200, 80);
+    private static final Color STEEL = new Color(220, 220, 230);
+    private static final Color GRID_DARK_A = new Color(22, 8, 10);
+    private static final Color GRID_DARK_B = new Color(16, 6, 8);
+    // Legacy aliases so the rest of the file remains readable.
+    private static final Color CYAN = RED_BRIGHT;
+    private static final Color MAGENTA = GOLD;
 
     private long lastTickTime = System.currentTimeMillis();
     private final Random rng = new Random();
@@ -35,7 +42,7 @@ public class GamePanel extends JPanel {
         int w = GameState.WIDTH * CELL + 2 * PADDING;
         int h = GameState.HEIGHT * CELL + 2 * PADDING;
         setPreferredSize(new Dimension(w, h));
-        setBackground(new Color(6, 10, 18));
+        setBackground(new Color(12, 4, 6));
 
         addMouseListener(new MouseAdapter() {
             @Override
@@ -149,7 +156,7 @@ public class GamePanel extends JPanel {
         g.translate(sx, sy);
 
         int W = getWidth(), H = getHeight();
-        GradientPaint bg = new GradientPaint(0, 0, new Color(8, 14, 24), 0, H, new Color(2, 6, 14));
+        GradientPaint bg = new GradientPaint(0, 0, new Color(20, 6, 8), 0, H, new Color(6, 2, 3));
         g.setPaint(bg);
         g.fillRect(0, 0, W, H);
 
@@ -343,26 +350,30 @@ public class GamePanel extends JPanel {
     }
 
     private void drawStoneWall(Graphics2D g, int px, int py) {
-        GradientPaint gp = new GradientPaint(px, py, new Color(70, 60, 90),
-                px, py + CELL, new Color(40, 36, 60));
+        // Warm stone gradient (dark grey-brown) that fits the red arcade theme.
+        GradientPaint gp = new GradientPaint(px, py, new Color(80, 64, 64),
+                px, py + CELL, new Color(40, 30, 32));
         g.setPaint(gp);
         g.fillRect(px, py, CELL, CELL);
 
-        g.setColor(new Color(25, 22, 38, 200));
+        // Mortar lines
+        g.setColor(new Color(20, 14, 16, 220));
         int half = CELL / 2;
         g.drawLine(px, py + half, px + CELL, py + half);
         g.drawLine(px + half, py, px + half, py + half);
         g.drawLine(px + half / 2, py + half, px + half / 2, py + CELL);
         g.drawLine(px + half + half / 2, py + half, px + half + half / 2, py + CELL);
 
-        g.setColor(new Color(140, 130, 170, 180));
+        // Top/left highlight, bottom/right shadow
+        g.setColor(new Color(160, 130, 130, 180));
         g.drawLine(px, py, px + CELL - 1, py);
         g.drawLine(px, py, px, py + CELL - 1);
-        g.setColor(new Color(0, 0, 0, 160));
+        g.setColor(new Color(0, 0, 0, 180));
         g.drawLine(px, py + CELL - 1, px + CELL - 1, py + CELL - 1);
         g.drawLine(px + CELL - 1, py, px + CELL - 1, py + CELL - 1);
 
-        g.setColor(new Color(MAGENTA.getRed(), MAGENTA.getGreen(), MAGENTA.getBlue(), 60));
+        // Subtle red rim
+        g.setColor(new Color(RED_GLOW.getRed(), RED_GLOW.getGreen(), RED_GLOW.getBlue(), 70));
         g.drawRect(px, py, CELL - 1, CELL - 1);
     }
 
@@ -409,9 +420,9 @@ public class GamePanel extends JPanel {
         int eyeY = py + CELL / 2 - 3;
         g.setColor(new Color(0, 0, 0, 220));
         g.fillRect(left + 4, eyeY, right - left - 8, 6);
-        g.setColor(CYAN);
+        g.setColor(GOLD);
         g.fillRect(left + 6, eyeY + 1, right - left - 12, 3);
-        g.setColor(new Color(220, 255, 255, 200));
+        g.setColor(new Color(255, 240, 200, 220));
         g.drawLine(left + 6, eyeY + 1, right - 7, eyeY + 1);
 
         g.setColor(new Color(0, 0, 0, 200));

@@ -13,12 +13,12 @@ import java.awt.event.MouseEvent;
 public class StartDialog extends JDialog {
     private int chosenPlayers = -1;
 
-    private static final Color BG = new Color(6, 10, 18);
-    private static final Color CYAN = new Color(40, 230, 255);
-    private static final Color CYAN_DIM = new Color(20, 110, 140);
-    private static final Color MAGENTA = new Color(255, 50, 180);
-    private static final Color TEXT = new Color(230, 245, 255);
-    private static final Color SUBTLE = new Color(120, 160, 190);
+    private static final Color BG = new Color(12, 4, 6);
+    private static final Color RED_BRIGHT = new Color(255, 60, 60);
+    private static final Color RED_DIM = new Color(140, 30, 35);
+    private static final Color GOLD = new Color(255, 200, 80);
+    private static final Color TEXT = new Color(255, 220, 220);
+    private static final Color SUBTLE = new Color(190, 130, 130);
 
     private static final Color[] PLAYER_COLORS = {
             new Color(255, 70, 90),
@@ -42,7 +42,7 @@ public class StartDialog extends JDialog {
 
         JLabel title = new JLabel("// SELECCIONA OS JOGADORES //");
         title.setFont(new Font("Monospaced", Font.BOLD, 24));
-        title.setForeground(CYAN);
+        title.setForeground(RED_BRIGHT);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         header.add(title);
 
@@ -109,12 +109,12 @@ public class StartDialog extends JDialog {
                 int w = getWidth();
                 int h = getHeight();
 
-                // Background (dark with subtle inset)
-                g.setColor(new Color(10, 16, 26, 235));
+                // Background (dark red-tinged with subtle inset)
+                g.setColor(new Color(18, 6, 8, 235));
                 g.fillRect(0, 0, w, h);
 
-                // Outer border (cyan when hovered, dim otherwise) with cut corners
-                Color border = hovered[0] ? CYAN : CYAN_DIM;
+                // Outer border (red when hovered, dim otherwise) with cut corners
+                Color border = hovered[0] ? RED_BRIGHT : RED_DIM;
                 g.setColor(border);
                 g.setStroke(new BasicStroke(hovered[0] ? 2.6f : 1.6f));
                 int cut = 14;
@@ -124,7 +124,7 @@ public class StartDialog extends JDialog {
 
                 // Inner glow when hovered
                 if (hovered[0]) {
-                    g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 28));
+                    g.setColor(new Color(RED_BRIGHT.getRed(), RED_BRIGHT.getGreen(), RED_BRIGHT.getBlue(), 28));
                     g.fillRect(4, 4, w - 8, h - 8);
                 }
 
@@ -134,23 +134,22 @@ public class StartDialog extends JDialog {
                 String top = "// PLAYERS";
                 g.drawString(top, 12, 22);
 
-                // Big number with glow
+                // Big number with red glow
                 g.setFont(new Font("Monospaced", Font.BOLD, 78));
                 FontMetrics fm = g.getFontMetrics();
                 String s = String.valueOf(n);
                 int tw = fm.stringWidth(s);
                 int baselineY = 110;
-                // glow
-                g.setColor(new Color(CYAN.getRed(), CYAN.getGreen(), CYAN.getBlue(), 70));
+                g.setColor(new Color(RED_BRIGHT.getRed(), RED_BRIGHT.getGreen(), RED_BRIGHT.getBlue(), 80));
                 for (int i = 5; i > 0; i--) {
                     g.drawString(s, w / 2 - tw / 2 + i, baselineY);
                     g.drawString(s, w / 2 - tw / 2 - i, baselineY);
                 }
-                g.setColor(hovered[0] ? Color.WHITE : new Color(220, 250, 255));
+                g.setColor(hovered[0] ? Color.WHITE : new Color(255, 200, 200));
                 g.drawString(s, w / 2 - tw / 2, baselineY);
 
-                // Magenta accent line
-                g.setColor(MAGENTA);
+                // Gold accent line
+                g.setColor(GOLD);
                 g.setStroke(new BasicStroke(2f));
                 g.drawLine(w / 2 - 24, baselineY + 14, w / 2 + 24, baselineY + 14);
 
