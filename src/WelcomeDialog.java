@@ -30,7 +30,7 @@ public class WelcomeDialog extends JDialog {
     public WelcomeDialog() {
         super((Frame) null, "Assassin's Duel", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(820, 640);
+        setSize(880, 680);
         setLocationRelativeTo(null);
         getContentPane().setBackground(BG);
         setLayout(new BorderLayout());
@@ -275,8 +275,8 @@ public class WelcomeDialog extends JDialog {
 
         private Shuriken newShuriken(boolean anywhere) {
             Shuriken s = new Shuriken();
-            int w = Math.max(getWidth(), 820);
-            int h = Math.max(getHeight(), 640);
+            int w = Math.max(getWidth(), 880);
+            int h = Math.max(getHeight(), 680);
             s.x = rng.nextInt(w);
             s.y = anywhere ? rng.nextInt(h) : -30 - rng.nextInt(200);
             s.size = 10 + rng.nextInt(18);
@@ -303,7 +303,7 @@ public class WelcomeDialog extends JDialog {
                 s.angle += s.spin * dt;
                 if (s.y > h + 40) {
                     s.y = -30 - rng.nextInt(120);
-                    s.x = rng.nextInt(Math.max(getWidth(), 820));
+                    s.x = rng.nextInt(Math.max(getWidth(), 880));
                 }
             }
             repaint();
@@ -371,57 +371,73 @@ public class WelcomeDialog extends JDialog {
     // ============================================================
 
     /**
-     * Pixel-art arcade marquee: ornamented red frame with two-line pixel title
-     * "ASSASSIN'S / DUEL" flanked by pixel-art ninja silhouettes.
+     * Pixel-art arcade marquee inspired by classic neon arcade signs:
+     *  - Ornamented red frame with rounded corners.
+     *  - "ASSASSIN'S / DUEL" rendered with a decorative serif font, pixelated
+     *    (rendered small, AA off, scaled up with nearest-neighbor).
+     *  - Three colour layers (dark shadow / mid red / bright highlight) for depth.
+     *  - Pixel-art ninja silhouettes flanking the title.
      */
     private static class ArcadeMarquee extends JComponent {
-        private static final int W = 680;
-        private static final int H = 300;
+        private static final int W = 760;
+        private static final int H = 340;
 
-        private static final Color FRAME_OUTER = new Color(110, 18, 22);
-        private static final Color FRAME_INNER = new Color(200, 40, 50);
-        private static final Color FRAME_HIGHLIGHT = new Color(255, 90, 95);
-        private static final Color MARQUEE_BG = new Color(14, 4, 6);
-        private static final Color DOT_DIM = new Color(60, 10, 15, 110);
+        // Frame palette
+        private static final Color FRAME_OUTER = new Color(80, 12, 16);
+        private static final Color FRAME_MID = new Color(150, 22, 28);
+        private static final Color FRAME_HIGHLIGHT = new Color(255, 90, 100);
+        private static final Color MARQUEE_BG = new Color(12, 3, 5);
+        private static final Color DOT_DIM = new Color(80, 12, 18, 130);
 
-        private static final Color TXT_SHADOW = new Color(90, 8, 14);
-        private static final Color TXT_MAIN = new Color(255, 60, 60);
-        private static final Color TXT_HIGHLIGHT = new Color(255, 170, 170);
+        // Text palette (3-layer depth)
+        private static final Color TXT_SHADOW = new Color(70, 6, 10);
+        private static final Color TXT_MID = new Color(200, 30, 36);
+        private static final Color TXT_BRIGHT = new Color(255, 60, 70);
+        private static final Color TXT_HIGHLIGHT = new Color(255, 180, 180);
         private static final Color GLOW = new Color(255, 30, 30);
 
-        // 14x16 ninja pixel sprite. Facing right (sword in front). Mirror for the right side.
-        // # = body filled (red)
-        // . = empty
+        /**
+         * Ninja sprite — 18 columns, 22 rows. Facing right with raised sword.
+         * '#' = body, 'S' = sword (rendered with brighter tint).
+         */
         private static final String[] NINJA = {
-                "...####.......",
-                "..######......",
-                ".##.####.##...",
-                ".########.....",
-                "..######......",
-                ".########.....",
-                "##########....",
-                "##.######.##..",
-                "##.######.##..",
-                "##.######.###.",
-                ".########..###",
-                ".##.##.##..#..",
-                ".##.##.##.....",
-                ".##.##.##.....",
-                "##...#...##...",
-                "##...#...##..."
+                "....######........",
+                "...########.......",
+                "..##.####.##......",
+                "..##########......",
+                "..##########......",
+                "...########.......",
+                "...########.......",
+                "....######....SSSS",
+                "..##########.SSS..",
+                ".############SS...",
+                "###.######.###....",
+                "##..######..##....",
+                "..#.######.#......",
+                "..##########......",
+                "..####..####......",
+                "..####..####......",
+                "..####..####......",
+                "..###....###......",
+                "...##....##.......",
+                "..####..####......",
+                ".######.######....",
+                ".######.######...."
         };
 
         private BufferedImage titleLine1;
         private BufferedImage titleLine2;
         private long birth = System.currentTimeMillis();
         private final Timer timer;
+        private final Font baseFont;
 
         ArcadeMarquee() {
             setOpaque(false);
             setPreferredSize(new Dimension(W, H));
             setMaximumSize(new Dimension(W, H));
-            titleLine1 = textBitmap("ASSASSIN'S", 32);
-            titleLine2 = textBitmap("DUEL", 32);
+            this.baseFont = pickArcadeFont(30);
+            this.titleLine1 = textBitmap("ASSASSIN'S", baseFont);
+            this.titleLine2 = textBitmap("DUEL", baseFont);
             timer = new Timer(60, e -> repaint());
             timer.start();
         }
@@ -444,165 +460,174 @@ public class WelcomeDialog extends JDialog {
             double t = (System.currentTimeMillis() - birth) * 0.0028;
             float pulse = (float) (0.85 + 0.15 * (Math.sin(t) + 1) / 2);
 
-            // ----- outer frame -----
-            // Outer dark red shell
+            // ----- frame -----
             g.setColor(FRAME_OUTER);
-            g.fillRoundRect(0, 0, w, h, 26, 26);
-            // Inner bright red ring
-            g.setColor(FRAME_INNER);
-            g.fillRoundRect(6, 6, w - 12, h - 12, 22, 22);
-            // Top highlight stripe
+            g.fillRoundRect(0, 0, w, h, 30, 30);
+            g.setColor(FRAME_MID);
+            g.fillRoundRect(5, 5, w - 10, h - 10, 26, 26);
             g.setColor(FRAME_HIGHLIGHT);
-            g.fillRect(8, 8, w - 16, 3);
-            // Inner dark marquee panel
+            g.fillRect(8, 7, w - 16, 2);
+            // Inner dark panel
             g.setColor(MARQUEE_BG);
-            g.fillRoundRect(14, 14, w - 28, h - 28, 16, 16);
+            g.fillRoundRect(14, 14, w - 28, h - 28, 18, 18);
 
-            // Dot-matrix background inside marquee panel
+            // ----- dot-matrix background inside panel -----
             g.setColor(DOT_DIM);
-            int dot = 3;
-            for (int yy = 22; yy < h - 22; yy += dot * 2) {
-                for (int xx = 22; xx < w - 22; xx += dot * 2) {
+            for (int yy = 22; yy < h - 22; yy += 5) {
+                for (int xx = 22; xx < w - 22; xx += 5) {
                     g.fillRect(xx, yy, 1, 1);
                 }
             }
 
             // ----- art deco ornaments (top & bottom center) -----
-            drawOrnament(g, w / 2, 14, true);
-            drawOrnament(g, w / 2, h - 14, false);
+            drawOrnament(g, w / 2, 16);
+            drawOrnament(g, w / 2, h - 16);
 
-            // ----- red glow behind text -----
-            int titleTop = 36;
-            int line1Y = titleTop;
-            int line2Y = titleTop + 110;
-
-            // Pixel art ninja sprites
-            int ninjaScale = 8;
+            // ----- ninja sprites (flanking the title) -----
+            int ninjaScale = 6;
             int ninjaW = NINJA[0].length() * ninjaScale;
             int ninjaH = NINJA.length * ninjaScale;
-            int ninjaY = h / 2 - ninjaH / 2;
-            drawPixelSprite(g, NINJA, 28, ninjaY, ninjaScale, TXT_MAIN, false);
-            drawPixelSprite(g, NINJA, w - 28 - ninjaW, ninjaY, ninjaScale, TXT_MAIN, true);
+            int ninjaY = h / 2 - ninjaH / 2 + 10;
+            drawPixelSprite(g, NINJA, 26, ninjaY, ninjaScale, false);
+            drawPixelSprite(g, NINJA, w - 26 - ninjaW, ninjaY, ninjaScale, true);
 
             // ----- title pixel-art text (two lines) -----
-            int scale = 4;
+            int scale = 3;
             int line1W = titleLine1.getWidth() * scale;
             int line2W = titleLine2.getWidth() * scale;
+            int line1H = titleLine1.getHeight() * scale;
+            int titleAreaTop = 38;
             int line1X = w / 2 - line1W / 2;
-            int line2X = w / 2 - line2W / 2;
+            int line2X = w / 2 - line2W / 2 + 30; // slight right offset like the reference
+            int line1Y = titleAreaTop;
+            int line2Y = titleAreaTop + line1H - 20;
 
-            // Layered glow (multiple offsets for depth)
-            for (int i = 8; i >= 2; i -= 2) {
-                int a = (int) ((40 - (8 - i) * 4) * pulse);
-                drawPixelText(g, titleLine1, line1X - i, line1Y, scale, withAlpha(GLOW, a));
-                drawPixelText(g, titleLine1, line1X + i, line1Y, scale, withAlpha(GLOW, a));
-                drawPixelText(g, titleLine2, line2X - i, line2Y, scale, withAlpha(GLOW, a));
-                drawPixelText(g, titleLine2, line2X + i, line2Y, scale, withAlpha(GLOW, a));
+            // Outer red glow (multiple offsets, low alpha) for the neon feel
+            for (int r = 6; r >= 2; r--) {
+                int a = (int) ((42 - (6 - r) * 6) * pulse);
+                Color gc = withAlpha(GLOW, a);
+                for (int dx = -r; dx <= r; dx += r) {
+                    for (int dy = -r; dy <= r; dy += r) {
+                        if (dx == 0 && dy == 0) continue;
+                        drawPixelText(g, titleLine1, line1X + dx, line1Y + dy, scale, gc);
+                        drawPixelText(g, titleLine2, line2X + dx, line2Y + dy, scale, gc);
+                    }
+                }
             }
-            // Shadow
-            drawPixelText(g, titleLine1, line1X + 4, line1Y + 4, scale, TXT_SHADOW);
-            drawPixelText(g, titleLine2, line2X + 4, line2Y + 4, scale, TXT_SHADOW);
-            // Main red fill
-            drawPixelText(g, titleLine1, line1X, line1Y, scale, TXT_MAIN);
-            drawPixelText(g, titleLine2, line2X, line2Y, scale, TXT_MAIN);
-            // Highlight strip (top 1/3 of each letter, lighter red)
-            drawPixelTextTop(g, titleLine1, line1X, line1Y, scale, TXT_HIGHLIGHT);
-            drawPixelTextTop(g, titleLine2, line2X, line2Y, scale, TXT_HIGHLIGHT);
 
-            // Scanlines over the whole marquee for CRT feel
-            g.setColor(new Color(0, 0, 0, 60));
+            // Hard drop shadow (down-right)
+            drawPixelText(g, titleLine1, line1X + 6, line1Y + 6, scale, TXT_SHADOW);
+            drawPixelText(g, titleLine2, line2X + 6, line2Y + 6, scale, TXT_SHADOW);
+
+            // Mid red layer (offset slightly down-right to fake bevel)
+            drawPixelText(g, titleLine1, line1X + 2, line1Y + 2, scale, TXT_MID);
+            drawPixelText(g, titleLine2, line2X + 2, line2Y + 2, scale, TXT_MID);
+
+            // Bright red main fill
+            drawPixelText(g, titleLine1, line1X, line1Y, scale, TXT_BRIGHT);
+            drawPixelText(g, titleLine2, line2X, line2Y, scale, TXT_BRIGHT);
+
+            // Top highlight strip (upper 35% of each glyph)
+            drawPixelTextPartial(g, titleLine1, line1X, line1Y, scale, TXT_HIGHLIGHT, 0.0, 0.35);
+            drawPixelTextPartial(g, titleLine2, line2X, line2Y, scale, TXT_HIGHLIGHT, 0.0, 0.35);
+
+            // ----- scanlines over the whole marquee -----
+            g.setColor(new Color(0, 0, 0, 70));
             for (int yy = 14; yy < h - 14; yy += 3) g.drawLine(14, yy, w - 14, yy);
 
-            // Subtle inner border line
-            g.setColor(new Color(180, 40, 50, 160));
-            g.drawRoundRect(14, 14, w - 29, h - 29, 16, 16);
+            // Subtle inner red border
+            g.setColor(new Color(180, 35, 45, 180));
+            g.drawRoundRect(14, 14, w - 29, h - 29, 18, 18);
 
             g.dispose();
         }
 
+        // -------- Helpers --------
+
+        /** Pick a decorative serif/arcade-looking font from what's installed. Falls back to Serif Bold. */
+        private static Font pickArcadeFont(int size) {
+            String[] candidates = {
+                    "Algerian", "Stencil", "Engravers MT", "Copperplate Gothic Bold",
+                    "Castellar", "Old English Text MT", "Impact", "Serif"
+            };
+            String[] available = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+            for (String c : candidates) {
+                for (String a : available) {
+                    if (a.equalsIgnoreCase(c)) {
+                        return new Font(a, Font.BOLD, size);
+                    }
+                }
+            }
+            return new Font("Serif", Font.BOLD, size);
+        }
+
         /** Diamond-and-line art-deco ornament centered at (cx, y). */
-        private void drawOrnament(Graphics2D g, int cx, int y, boolean topOriented) {
-            Color c1 = new Color(255, 100, 100);
+        private void drawOrnament(Graphics2D g, int cx, int y) {
+            Color c1 = new Color(255, 100, 110);
             Color c2 = new Color(200, 40, 50);
             // Central diamond
-            int[] dx = {cx, cx + 8, cx, cx - 8};
-            int[] dy = {y - 6, y, y + 6, y};
+            int[] dx = {cx, cx + 9, cx, cx - 9};
+            int[] dy = {y - 7, y, y + 7, y};
             g.setColor(c1);
             g.fillPolygon(dx, dy, 4);
-            g.setColor(new Color(255, 200, 200));
+            g.setColor(new Color(255, 210, 210));
             int[] dx2 = {cx, cx + 4, cx, cx - 4};
             int[] dy2 = {y - 3, y, y + 3, y};
             g.fillPolygon(dx2, dy2, 4);
 
             // Side spear lines
             g.setColor(c2);
-            g.fillRect(cx + 12, y - 1, 60, 2);
-            g.fillRect(cx - 72, y - 1, 60, 2);
+            g.fillRect(cx + 14, y - 1, 80, 2);
+            g.fillRect(cx - 94, y - 1, 80, 2);
+            // Tick marks
             g.setColor(c1);
-            g.fillRect(cx + 14, y - 1, 4, 2);
-            g.fillRect(cx + 24, y - 1, 4, 2);
-            g.fillRect(cx + 34, y - 1, 4, 2);
-            g.fillRect(cx - 18, y - 1, 4, 2);
-            g.fillRect(cx - 28, y - 1, 4, 2);
-            g.fillRect(cx - 38, y - 1, 4, 2);
+            for (int i = 0; i < 4; i++) {
+                g.fillRect(cx + 18 + i * 12, y - 1, 4, 2);
+                g.fillRect(cx - 22 - i * 12, y - 1, 4, 2);
+            }
 
             // Side mini diamonds
             for (int sign : new int[]{-1, 1}) {
-                int px = cx + sign * 78;
-                int[] mx = {px, px + 4, px, px - 4};
-                int[] my = {y - 4, y, y + 4, y};
+                int px = cx + sign * 100;
+                int[] mx = {px, px + 5, px, px - 5};
+                int[] my = {y - 5, y, y + 5, y};
                 g.setColor(c1);
                 g.fillPolygon(mx, my, 4);
             }
         }
 
-        // Render text into a small monochrome (white-on-transparent) bitmap with AA off.
-        private static BufferedImage textBitmap(String s, int fontSize) {
-            Font f = new Font("Monospaced", Font.BOLD, fontSize);
+        /** Render text into a small monochrome (white) bitmap with AA off. */
+        private static BufferedImage textBitmap(String s, Font font) {
             Canvas c = new Canvas();
-            FontMetrics fm = c.getFontMetrics(f);
+            FontMetrics fm = c.getFontMetrics(font);
             int w = Math.max(1, fm.stringWidth(s));
             int h = fm.getAscent() + fm.getDescent();
             BufferedImage img = new BufferedImage(w + 2, h + 2, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = img.createGraphics();
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-            g.setFont(f);
+            g.setFont(font);
             g.setColor(Color.WHITE);
             g.drawString(s, 1, fm.getAscent());
             g.dispose();
             return img;
         }
 
-        // Recolor the white pixels of `bm` to `color` and draw it scaled with nearest neighbor.
+        /** Recolor `bm` to `color` and draw it scaled with nearest-neighbor. */
         private static void drawPixelText(Graphics2D g, BufferedImage bm, int dstX, int dstY, int scale, Color color) {
-            BufferedImage tinted = new BufferedImage(bm.getWidth(), bm.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            int colRGB = color.getRGB() & 0xFFFFFF;
-            int colA = (color.getAlpha());
-            for (int y = 0; y < bm.getHeight(); y++) {
-                for (int x = 0; x < bm.getWidth(); x++) {
-                    int p = bm.getRGB(x, y);
-                    int a = (p >>> 24) & 0xff;
-                    if (a > 0) {
-                        int effA = (a * colA) / 255;
-                        tinted.setRGB(x, y, (effA << 24) | colRGB);
-                    }
-                }
-            }
-            Object prev = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            g.drawImage(tinted, dstX, dstY, bm.getWidth() * scale, bm.getHeight() * scale, null);
-            if (prev != null) g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, prev);
+            drawPixelTextPartial(g, bm, dstX, dstY, scale, color, 0.0, 1.0);
         }
 
-        // Same as drawPixelText but only the upper 35% of each glyph row (cheap "highlight stripe").
-        private static void drawPixelTextTop(Graphics2D g, BufferedImage bm, int dstX, int dstY, int scale, Color color) {
-            int hRows = bm.getHeight();
-            int topLimit = (int) (hRows * 0.40);
+        /** Draw only a vertical slice of the glyph bitmap (rowStart..rowEnd as fractions). */
+        private static void drawPixelTextPartial(Graphics2D g, BufferedImage bm, int dstX, int dstY, int scale,
+                                                 Color color, double rowStart, double rowEnd) {
+            int rs = (int) (bm.getHeight() * rowStart);
+            int re = (int) (bm.getHeight() * rowEnd);
+            if (re <= rs) return;
             BufferedImage tinted = new BufferedImage(bm.getWidth(), bm.getHeight(), BufferedImage.TYPE_INT_ARGB);
             int colRGB = color.getRGB() & 0xFFFFFF;
             int colA = color.getAlpha();
-            for (int y = 0; y < topLimit; y++) {
+            for (int y = rs; y < re; y++) {
                 for (int x = 0; x < bm.getWidth(); x++) {
                     int p = bm.getRGB(x, y);
                     int a = (p >>> 24) & 0xff;
@@ -618,28 +643,36 @@ public class WelcomeDialog extends JDialog {
             if (prev != null) g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, prev);
         }
 
-        // Draw a string-array pixel sprite. Each '#' becomes a scale x scale red square.
-        // Adds a small shadow on the lower-right pixels and a highlight on the upper-left.
-        private static void drawPixelSprite(Graphics2D g, String[] sprite, int x, int y, int scale, Color color, boolean mirror) {
+        /** Draw the ninja sprite. '#' = body, 'S' = sword (brighter). Shading applied per pixel block. */
+        private static void drawPixelSprite(Graphics2D g, String[] sprite, int x, int y, int scale, boolean mirror) {
             int rows = sprite.length;
             int cols = sprite[0].length();
-            Color shadow = new Color(80, 10, 15);
-            Color highlight = new Color(255, 130, 130);
+            Color body = TXT_BRIGHT;
+            Color bodyShadow = new Color(120, 14, 20);
+            Color bodyHighlight = new Color(255, 130, 130);
+            Color sword = new Color(255, 200, 200);
+            Color swordEdge = new Color(255, 240, 240);
             for (int r = 0; r < rows; r++) {
                 String row = sprite[r];
                 for (int c = 0; c < cols; c++) {
                     char ch = row.charAt(mirror ? (cols - 1 - c) : c);
-                    if (ch != '#') continue;
+                    if (ch == '.') continue;
                     int px = x + c * scale;
                     int py = y + r * scale;
-                    g.setColor(color);
-                    g.fillRect(px, py, scale, scale);
-                    // simple shading
-                    g.setColor(shadow);
-                    g.fillRect(px, py + scale - 1, scale, 1);
-                    g.fillRect(px + scale - 1, py, 1, scale);
-                    g.setColor(highlight);
-                    g.fillRect(px, py, scale, 1);
+                    if (ch == 'S') {
+                        g.setColor(sword);
+                        g.fillRect(px, py, scale, scale);
+                        g.setColor(swordEdge);
+                        g.fillRect(px, py, scale, 1);
+                    } else {
+                        g.setColor(body);
+                        g.fillRect(px, py, scale, scale);
+                        g.setColor(bodyShadow);
+                        g.fillRect(px, py + scale - 1, scale, 1);
+                        g.fillRect(px + scale - 1, py, 1, scale);
+                        g.setColor(bodyHighlight);
+                        g.fillRect(px, py, scale, 1);
+                    }
                 }
             }
         }
