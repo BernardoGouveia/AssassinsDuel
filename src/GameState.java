@@ -170,8 +170,8 @@ public class GameState {
                 actor.dmgDealt += (hpBefore - target.hp);
                 triggerFlash(targetX, targetY);
                 triggerHit(targetX, targetY, Action.MELEE);
+                // SoundFx.melee() bakes the damage thwack into the same buffer.
                 SoundFx.melee();
-                SoundFx.damage();
                 String msg = actor.name + " atacou " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
                 log.add(msg);
                 if (!target.isAlive()) {
@@ -200,12 +200,10 @@ public class GameState {
                 triggerFlash(targetX, targetY);
                 triggerHit(targetX, targetY, Action.SHURIKEN);
                 triggerShuriken(actor.x, actor.y, targetX, targetY);
-                SoundFx.shuriken();
-                // Damage hit lands when the projectile arrives, ~60ms per cell.
+                // SoundFx.shuriken(distance) bakes the damage thwack into the same
+                // buffer at the projectile-arrival offset — no separate Timer needed.
                 int shDist = Math.max(Math.abs(targetX - actor.x), Math.abs(targetY - actor.y));
-                javax.swing.Timer dt = new javax.swing.Timer(60 * Math.max(1, shDist), ev -> SoundFx.damage());
-                dt.setRepeats(false);
-                dt.start();
+                SoundFx.shuriken(shDist);
                 String msg = actor.name + " atirou shuriken em " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
                 log.add(msg);
                 if (!target.isAlive()) {

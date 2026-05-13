@@ -29,25 +29,40 @@ public class SoundFx {
         });
     }
 
-    /** Sword slash — high-to-low whoosh with airy noise overlay. */
+    /**
+     * Sword slash — whoosh + damage thwack baked into the same buffer.
+     * Combining into one PCM buffer means only ONE SourceDataLine opens per
+     * attack, which is far more reliable than firing two parallel audio
+     * threads (the second often gets dropped on Windows).
+     */
     public static void melee() {
         if (!enabled) return;
         async(() -> {
             byte[] sweep = renderSweep(1100, 140, 140, 0.26, 0.005, 0.060, 0.6);
             byte[] noise = renderNoise(120, 0.18, 0.004, 0.080, 3500);
-            play(mix(sweep, noise));
+            byte[] whoosh = mix(sweep, noise);
+            // Damage lands ~40ms into the swing.
+            play(mixAt(whoosh, damageBuffer(), 40));
         });
     }
 
-    /** Shuriken whoosh — fast high-pitched downward sweep with vibrato. */
-    public static void shuriken() {
+    /**
+     * Shuriken throw — whoosh + damage thwack baked at the projectile-arrival
+     * offset (60ms per cell). Pass the Chebyshev distance from caster to target.
+     */
+    public static void shuriken(int distanceCells) {
         if (!enabled) return;
         async(() -> {
             byte[] sweep = renderSweepVibrato(1600, 520, 180, 0.22, 0.003, 0.080, 0.6, 28, 14);
             byte[] noise = renderNoise(80, 0.12, 0.002, 0.060, 5500);
-            play(mix(sweep, noise));
+            byte[] whoosh = mix(sweep, noise);
+            int offsetMs = 60 * Math.max(1, distanceCells);
+            play(mixAt(whoosh, damageBuffer(), offsetMs));
         });
     }
+
+    /** Backwards-compatible shuriken (assumes 1-cell distance). */
+    public static void shuriken() { shuriken(1); }
 
     /** Heal — bright bell-like ascending arpeggio with overtones. */
     public static void heal() {
@@ -82,18 +97,18 @@ public class SoundFx {
         });
     }
 
-    /** Damage thwack — sharp transient + meaty mid-low thud + crunchy noise. */
+    /** Standalone damage thwack (rarely used externally — melee/shuriken bake it in). */
     public static void damage() {
         if (!enabled) return;
-        async(() -> {
-            // Sharp high-freq transient so the hit cuts through melee/shuriken sounds.
-            byte[] transient_ = renderSweep(2200, 700, 35, 0.42, 0.0005, 0.020, 0.4);
-            // Meaty mid-low body that sustains.
-            byte[] body = renderSweep(380, 95, 160, 0.40, 0.002, 0.110, 0.6);
-            // Crunchy noise overlay (gives it the "ow" feel).
-            byte[] noise = renderNoise(90, 0.28, 0.001, 0.050, 2400);
-            play(mix(mix(transient_, body), noise));
-        });
+        async(() -> play(damageBuffer()));
+    }
+
+    /** PCM buffer for the damage thwack: sharp transient + meaty body + crunchy noise. */
+    private static byte[] damageBuffer() {
+        byte[] transient_ = renderSweep(2200, 700, 35, 0.42, 0.0005, 0.020, 0.4);
+        byte[] body = renderSweep(380, 95, 160, 0.40, 0.002, 0.110, 0.6);
+        byte[] noise = renderNoise(90, 0.28, 0.001, 0.050, 2400);
+        return mix(mix(transient_, body), noise);
     }
 
     /** Death — mournful descending sweep + low rumble. */
@@ -265,6 +280,30 @@ public class SoundFx {
             if (mixed < -32768) mixed = -32768;
             out[i * 2] = (byte) (mixed & 0xff);
             out[i * 2 + 1] = (byte) ((mixed >> 8) & 0xff);
+        }
+        return out;
+    }
+
+    /** Mix {@code b} into {@code a} starting at {@code offsetMs}. Output is the longer of the two. */
+    private static byte[] mixAt(byte[] a, byte[] b, int offsetMs) {
+        int offsetSamples = (int) (SAMPLE_RATE * offsetMs / 1000.0);
+        int na = a.length / 2;
+        int nb = b.length / 2;
+        int totalLen = Math.max(na, offsetSamples + nb);
+        byte[] out = new byte[totalLen * 2];
+        // copy A
+        System.arraycopy(a, 0, out, 0, a.length);
+        // mix in B at offset
+        for (int i = 0; i < nb; i++) {
+            int outIdx = offsetSamples + i;
+            if (outIdx >= totalLen) break;
+            int sA = (outIdx < na) ? readSample(a, outIdx) : 0;
+            int sB = readSample(b, i);
+            int mixed = sA + sB;
+            if (mixed > 32767) mixed = 32767;
+            if (mixed < -32768) mixed = -32768;
+            out[outIdx * 2] = (byte) (mixed & 0xff);
+            out[outIdx * 2 + 1] = (byte) ((mixed >> 8) & 0xff);
         }
         return out;
     }
