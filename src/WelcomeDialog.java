@@ -5,6 +5,7 @@ import java.awt.event.*;
 import java.awt.font.FontRenderContext;
 import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -72,6 +73,7 @@ public class WelcomeDialog extends JDialog {
             @Override
             public void windowOpened(WindowEvent e) {
                 requestFocusInWindow();
+                SoundFx.intro();
             }
         });
     }
@@ -104,7 +106,7 @@ public class WelcomeDialog extends JDialog {
 
         content.add(Box.createVerticalStrut(12));
 
-        NeonTitle neon = new NeonTitle("ASSASSIN'S DUEL", 62, CYAN, MAGENTA);
+        ArcadeSlashTitle neon = new ArcadeSlashTitle("ASSASSIN'S DUEL", 66);
         neon.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(neon);
 
@@ -408,20 +410,29 @@ public class WelcomeDialog extends JDialog {
         float alpha;
     }
 
-    /** Neon title with two-color glow (cyan + magenta) and soft pulse. */
-    private static class NeonTitle extends JComponent {
+    /**
+     * Arcade-style red title with chromatic aberration and shuriken slash cuts.
+     * Three diagonal slashes cross the text — the gash inside the letters is
+     * dark/red, with a cyan-white blade trail and sparks at the endpoints.
+     */
+    private static class ArcadeSlashTitle extends JComponent {
         private final String text;
         private final Font font;
-        private final Color outer;
-        private final Color rim;
         private float pulse = 1.0f;
         private final Timer timer;
+        private final long birth = System.currentTimeMillis();
 
-        NeonTitle(String text, int size, Color outer, Color rim) {
+        private static final Color RED_GLOW = new Color(255, 30, 50);
+        private static final Color RED_FILL = new Color(255, 60, 60);
+        private static final Color RED_HIGHLIGHT = new Color(255, 200, 200);
+        private static final Color CHROMA = new Color(255, 30, 130);
+        private static final Color BLADE_CYAN = new Color(60, 240, 255);
+        private static final Color BLADE_WHITE = new Color(230, 250, 255);
+
+        ArcadeSlashTitle(String text, int size) {
             this.text = text;
+            // Monospaced Bold gives the chunky blocky arcade vibe within stock Java fonts.
             this.font = new Font("Monospaced", Font.BOLD, size);
-            this.outer = outer;
-            this.rim = rim;
             timer = new Timer(40, e -> {
                 double t = System.currentTimeMillis() * 0.0028;
                 pulse = (float) (0.82 + 0.18 * (Math.sin(t) + 1) / 2);
@@ -434,7 +445,7 @@ public class WelcomeDialog extends JDialog {
         @Override
         public Dimension getPreferredSize() {
             FontMetrics fm = getFontMetrics(font);
-            return new Dimension(fm.stringWidth(text) + 100, fm.getHeight() + 50);
+            return new Dimension(fm.stringWidth(text) + 120, fm.getHeight() + 60);
         }
 
         @Override
@@ -451,6 +462,7 @@ public class WelcomeDialog extends JDialog {
             Graphics2D g = (Graphics2D) g0.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
             FontRenderContext frc = g.getFontRenderContext();
             TextLayout layout = new TextLayout(text, font, frc);
@@ -458,31 +470,96 @@ public class WelcomeDialog extends JDialog {
             double x = (getWidth() - bounds.getWidth()) / 2.0 - bounds.getX();
             double y = (getHeight() - bounds.getHeight()) / 2.0 - bounds.getY();
             Shape outline = layout.getOutline(AffineTransform.getTranslateInstance(x, y));
+            Rectangle2D tb = outline.getBounds2D();
 
-            // Magenta chromatic-aberration offset behind
-            Shape shifted = layout.getOutline(AffineTransform.getTranslateInstance(x + 3, y + 1));
-            g.setColor(new Color(rim.getRed(), rim.getGreen(), rim.getBlue(), (int) (180 * pulse)));
-            g.fill(shifted);
-
-            // Outer cyan glow
-            for (int i = 36; i >= 6; i -= 2) {
-                float baseAlpha = 0.04f + (36 - i) * 0.006f;
+            // 1. Outer red glow (multiple stroke layers)
+            for (int i = 38; i >= 6; i -= 2) {
+                float baseAlpha = 0.05f + (38 - i) * 0.0065f;
                 int a = Math.min(255, (int) (baseAlpha * pulse * 255));
-                g.setColor(new Color(outer.getRed(), outer.getGreen(), outer.getBlue(), a));
+                g.setColor(new Color(RED_GLOW.getRed(), RED_GLOW.getGreen(), RED_GLOW.getBlue(), a));
                 g.setStroke(new BasicStroke(i, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g.draw(outline);
             }
 
-            // Sharp rim
-            g.setColor(new Color(outer.getRed(), outer.getGreen(), outer.getBlue(), (int) (230 * pulse)));
+            // 2. Chromatic aberration (magenta offset behind)
+            Shape shiftMag = layout.getOutline(AffineTransform.getTranslateInstance(x + 3, y + 1));
+            g.setColor(new Color(CHROMA.getRed(), CHROMA.getGreen(), CHROMA.getBlue(), (int) (170 * pulse)));
+            g.fill(shiftMag);
+
+            // 3. Red rim
+            g.setColor(new Color(RED_GLOW.getRed(), RED_GLOW.getGreen(), RED_GLOW.getBlue(), (int) (230 * pulse)));
             g.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g.draw(outline);
 
-            // Bright core fill
-            g.setColor(new Color(220, 255, 255));
+            // 4. Bright red fill
+            g.setColor(RED_FILL);
             g.fill(outline);
 
+            // 5. Light highlight along the edge
+            g.setColor(new Color(255, 200, 200, 200));
+            g.setStroke(new BasicStroke(0.9f));
+            g.draw(outline);
+
+            // 6. Shuriken slash cuts
+            double tx0 = tb.getX(), ty0 = tb.getY();
+            double tw = tb.getWidth(), th = tb.getHeight();
+            Line2D[] slashes = new Line2D[] {
+                    new Line2D.Double(tx0 - 30, ty0 + th * 0.65, tx0 + tw * 0.42, ty0 + th * 0.10),
+                    new Line2D.Double(tx0 + tw * 0.34, ty0 + th * 0.95, tx0 + tw * 0.72, ty0 + th * 0.05),
+                    new Line2D.Double(tx0 + tw * 0.58, ty0 + th * 1.05, tx0 + tw + 30, ty0 + th * 0.50)
+            };
+
+            // 6a. Inside the letters: dark gash (clip to letter outline)
+            Shape oldClip = g.getClip();
+            g.setClip(outline);
+            for (Line2D s : slashes) {
+                g.setColor(new Color(40, 0, 8, 235));
+                g.setStroke(new BasicStroke(7f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+                g.draw(s);
+                g.setColor(new Color(120, 10, 20, 200));
+                g.setStroke(new BasicStroke(3f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+                g.draw(s);
+            }
+            g.setClip(oldClip);
+
+            // 6b. Over the whole canvas: cyan blade trail with glow
+            for (Line2D s : slashes) {
+                for (int i = 14; i >= 4; i -= 2) {
+                    int a = Math.max(0, 60 - (14 - i) * 6);
+                    g.setColor(new Color(BLADE_CYAN.getRed(), BLADE_CYAN.getGreen(), BLADE_CYAN.getBlue(), a));
+                    g.setStroke(new BasicStroke(i, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g.draw(s);
+                }
+                g.setColor(BLADE_WHITE);
+                g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g.draw(s);
+
+                // sparks at endpoints
+                drawSpark(g, (int) s.getX1(), (int) s.getY1(), 4);
+                drawSpark(g, (int) s.getX2(), (int) s.getY2(), 5);
+            }
+
+            // 7. Scanlines over the title for arcade CRT feel
+            g.setColor(new Color(0, 0, 0, 36));
+            int by = (int) tb.getY() - 4;
+            int bh = (int) tb.getHeight() + 8;
+            for (int yy = by; yy < by + bh; yy += 3) {
+                g.drawLine(0, yy, getWidth(), yy);
+            }
+
             g.dispose();
+        }
+
+        private void drawSpark(Graphics2D g, int cx, int cy, int r) {
+            // central white dot + 4 short cyan rays
+            g.setColor(new Color(BLADE_CYAN.getRed(), BLADE_CYAN.getGreen(), BLADE_CYAN.getBlue(), 120));
+            g.fillOval(cx - r - 2, cy - r - 2, (r + 2) * 2, (r + 2) * 2);
+            g.setColor(BLADE_WHITE);
+            g.fillOval(cx - r, cy - r, r * 2, r * 2);
+            g.setColor(new Color(220, 240, 255, 200));
+            g.setStroke(new BasicStroke(1.2f));
+            g.drawLine(cx - r * 3, cy, cx + r * 3, cy);
+            g.drawLine(cx, cy - r * 3, cx, cy + r * 3);
         }
     }
 }

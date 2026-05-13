@@ -69,4 +69,22 @@ public class SoundFx {
     public static void death()    { chord(220, 200, 110, 350); }
     public static void victory()  { chord(523, 90, 659, 90, 784, 90, 1046, 220); }
     public static void fail()     { tone(120, 120, 0.25); }
+
+    /** Sharp low thud — played on the victim when damage is taken. */
+    public static void damage()   { chord(220, 70, 140, 110); }
+
+    /** Arcade fanfare for the welcome screen. */
+    public static void intro() {
+        if (!enabled) return;
+        Thread t = new Thread(() -> {
+            // Quick ascending arpeggio then a sustained ring
+            playTone(392, 70, 0.22);  // G4
+            playTone(523, 70, 0.22);  // C5
+            playTone(659, 70, 0.22);  // E5
+            playTone(784, 110, 0.25); // G5
+            playTone(1046, 220, 0.20); // C6 sustained
+        });
+        t.setDaemon(true);
+        t.start();
+    }
 }

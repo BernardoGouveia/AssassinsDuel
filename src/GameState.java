@@ -167,6 +167,7 @@ public class GameState {
                 triggerFlash(targetX, targetY);
                 triggerHit(targetX, targetY, Action.MELEE);
                 SoundFx.melee();
+                SoundFx.damage();
                 String msg = actor.name + " atacou " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
                 log.add(msg);
                 if (!target.isAlive()) {
@@ -193,6 +194,11 @@ public class GameState {
                 triggerHit(targetX, targetY, Action.SHURIKEN);
                 triggerShuriken(actor.x, actor.y, targetX, targetY);
                 SoundFx.shuriken();
+                // Damage hit lands when the projectile arrives, ~60ms per cell.
+                int shDist = Math.max(Math.abs(targetX - actor.x), Math.abs(targetY - actor.y));
+                javax.swing.Timer dt = new javax.swing.Timer(60 * Math.max(1, shDist), ev -> SoundFx.damage());
+                dt.setRepeats(false);
+                dt.start();
                 String msg = actor.name + " atirou shuriken em " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
                 log.add(msg);
                 if (!target.isAlive()) {
