@@ -220,6 +220,8 @@ public class WelcomeDialog extends JDialog {
                         "POWER-UPS NO MAPA\n" +
                         "  > Verde \"+\" : +25 HP imediato ao passar por cima.\n" +
                         "  > Laranja \"!\" : +15 dano no próximo ataque.\n" +
+                        "  > Azul (escudo) : próximo dano sofrido é reduzido em 50%.\n" +
+                        "  > Amarelo (raio) : +2 AP imediatos neste turno.\n" +
                         "  > Aparecem novos a cada 3 rondas completas.\n\n" +
                         "FIM DE TURNO\n" +
                         "  > Carrega em \"Terminar Turno\" para passar a vez.\n" +

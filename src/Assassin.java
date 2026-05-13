@@ -12,6 +12,7 @@ public class Assassin {
     public final int maxAp = 5;
     public boolean usedHeal = false;
     public int damageBoost = 0; // bonus damage applied to next attack
+    public boolean shielded = false; // halves next incoming damage when true
 
     // Per-match statistics (shown on the game-over screen)
     public int dmgDealt = 0;

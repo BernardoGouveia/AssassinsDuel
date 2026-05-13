@@ -165,6 +165,8 @@ public class GameState {
                 int dmg = MELEE_DAMAGE + actor.damageBoost;
                 boolean hadBoost = actor.damageBoost > 0;
                 actor.damageBoost = 0;
+                boolean blocked = target.shielded;
+                dmg = absorbShield(target, dmg);
                 int hpBefore = target.hp;
                 target.damage(dmg);
                 actor.dmgDealt += (hpBefore - target.hp);
@@ -172,7 +174,8 @@ public class GameState {
                 triggerHit(targetX, targetY, Action.MELEE);
                 // SoundFx.melee() bakes the damage thwack into the same buffer.
                 SoundFx.melee();
-                String msg = actor.name + " atacou " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
+                String msg = actor.name + " atacou " + target.name + " (-" + dmg + " HP)"
+                        + (hadBoost ? " [BÓNUS]" : "") + (blocked ? " [ESCUDO]" : "");
                 log.add(msg);
                 if (!target.isAlive()) {
                     log.add(target.name + " caiu!");
@@ -194,6 +197,8 @@ public class GameState {
                 int dmg = SHURIKEN_DAMAGE + actor.damageBoost;
                 boolean hadBoost = actor.damageBoost > 0;
                 actor.damageBoost = 0;
+                boolean blocked2 = target.shielded;
+                dmg = absorbShield(target, dmg);
                 int hpBefore2 = target.hp;
                 target.damage(dmg);
                 actor.dmgDealt += (hpBefore2 - target.hp);
@@ -204,7 +209,8 @@ public class GameState {
                 // buffer at the projectile-arrival offset — no separate Timer needed.
                 int shDist = Math.max(Math.abs(targetX - actor.x), Math.abs(targetY - actor.y));
                 SoundFx.shuriken(shDist);
-                String msg = actor.name + " atirou shuriken em " + target.name + " (-" + dmg + " HP)" + (hadBoost ? " [BÓNUS]" : "");
+                String msg = actor.name + " atirou shuriken em " + target.name + " (-" + dmg + " HP)"
+                        + (hadBoost ? " [BÓNUS]" : "") + (blocked2 ? " [ESCUDO]" : "");
                 log.add(msg);
                 if (!target.isAlive()) {
                     log.add(target.name + " caiu!");
@@ -248,7 +254,24 @@ public class GameState {
                 actor.damageBoost += POWERUP_DAMAGE_BONUS;
                 log.add("✦ " + actor.name + " apanhou dano bónus (+" + POWERUP_DAMAGE_BONUS + " no próximo ataque)");
                 break;
+            case SHIELD:
+                actor.shielded = true;
+                log.add("✦ " + actor.name + " apanhou escudo (próximo dano -50%)");
+                break;
+            case ENERGIA:
+                actor.ap += 2;
+                log.add("✦ " + actor.name + " apanhou energia (+2 AP)");
+                break;
         }
+    }
+
+    /** If the target has a shield charge, consume it and halve incoming damage (rounded up). */
+    private int absorbShield(Assassin target, int dmg) {
+        if (!target.shielded) return dmg;
+        target.shielded = false;
+        int reduced = (dmg + 1) / 2;
+        log.add("🛡 " + target.name + " absorveu metade do dano!");
+        return reduced;
     }
 
     private void spawnRandomPowerup() {
@@ -259,7 +282,8 @@ public class GameState {
             if (powerups[x][y] != null) continue;
             if (assassinAt(x, y) != null) continue;
             if (isInStartingArea(x, y)) continue;
-            powerups[x][y] = rng.nextBoolean() ? Powerup.HEAL : Powerup.DAMAGE;
+            Powerup[] all = Powerup.values();
+            powerups[x][y] = all[rng.nextInt(all.length)];
             return;
         }
     }

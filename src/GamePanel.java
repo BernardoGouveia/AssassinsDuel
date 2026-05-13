@@ -206,8 +206,12 @@ public class GamePanel extends JPanel {
                 if (p == null) continue;
                 int px = PADDING + x * CELL;
                 int py = PADDING + y * CELL + (int) bob;
-                if (p == Powerup.HEAL) drawPowerup(g, px, py, new Color(60, 220, 100), "+");
-                else drawPowerup(g, px, py, new Color(255, 170, 50), "!");
+                switch (p) {
+                    case HEAL:    drawPowerupPlus(g, px, py, new Color(60, 220, 100)); break;
+                    case DAMAGE:  drawPowerupExcl(g, px, py, new Color(255, 170, 50)); break;
+                    case SHIELD:  drawPowerupShield(g, px, py, new Color(90, 180, 255)); break;
+                    case ENERGIA: drawPowerupBolt(g, px, py, new Color(255, 230, 80)); break;
+                }
             }
         }
 
@@ -275,6 +279,17 @@ public class GamePanel extends JPanel {
                 double dpulse = 0.7 + 0.3 * Math.sin(now * 0.012);
                 g.setColor(new Color(255, 200, 70, (int) (255 * dpulse)));
                 g.drawOval(px + 4, py + 4, CELL - 8, CELL - 8);
+                g.setStroke(prev);
+            }
+
+            if (a.shielded) {
+                Stroke prev = g.getStroke();
+                g.setStroke(new BasicStroke(2.4f));
+                double spulse = 0.6 + 0.4 * Math.sin(now * 0.010);
+                g.setColor(new Color(90, 180, 255, (int) (220 * spulse)));
+                g.drawOval(px + 2, py + 2, CELL - 4, CELL - 4);
+                g.setColor(new Color(180, 220, 255, (int) (140 * spulse)));
+                g.drawOval(px - 1, py - 1, CELL + 2, CELL + 2);
                 g.setStroke(prev);
             }
 
@@ -468,7 +483,8 @@ public class GamePanel extends JPanel {
         g.drawRect(px, py, CELL - 1, CELL - 1);
     }
 
-    private void drawPowerup(Graphics2D g, int px, int py, Color base, String glyph) {
+    /** Common rounded background for all powerups: outer glow, gradient body, white rim. */
+    private void drawPowerupBase(Graphics2D g, int px, int py, Color base) {
         g.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), 70));
         g.fillRoundRect(px + 4, py + 4, CELL - 8, CELL - 8, 14, 14);
         GradientPaint gp = new GradientPaint(px, py, base.brighter(), px, py + CELL, base.darker());
@@ -476,11 +492,50 @@ public class GamePanel extends JPanel {
         g.fillRoundRect(px + 9, py + 9, CELL - 18, CELL - 18, 10, 10);
         g.setColor(new Color(255, 255, 255, 160));
         g.drawRoundRect(px + 9, py + 9, CELL - 18, CELL - 18, 10, 10);
+    }
+
+    private void drawPowerupPlus(Graphics2D g, int px, int py, Color base) {
+        drawPowerupBase(g, px, py, base);
+        int cx = px + CELL / 2, cy = py + CELL / 2;
         g.setColor(Color.WHITE);
-        g.setFont(new Font("Monospaced", Font.BOLD, 22));
-        FontMetrics fm = g.getFontMetrics();
-        int tw = fm.stringWidth(glyph);
-        g.drawString(glyph, px + CELL / 2 - tw / 2, py + CELL / 2 + fm.getAscent() / 2 - 3);
+        g.fillRect(cx - 2, cy - 9, 4, 18);
+        g.fillRect(cx - 9, cy - 2, 18, 4);
+    }
+
+    private void drawPowerupExcl(Graphics2D g, int px, int py, Color base) {
+        drawPowerupBase(g, px, py, base);
+        int cx = px + CELL / 2, cy = py + CELL / 2;
+        g.setColor(Color.WHITE);
+        g.fillRect(cx - 2, cy - 10, 4, 12);
+        g.fillRect(cx - 2, cy + 5, 4, 4);
+    }
+
+    /** Heraldic shield silhouette icon. */
+    private void drawPowerupShield(Graphics2D g, int px, int py, Color base) {
+        drawPowerupBase(g, px, py, base);
+        int cx = px + CELL / 2, cy = py + CELL / 2;
+        int[] xs = {cx,     cx + 9, cx + 9, cx + 5, cx,     cx - 5, cx - 9, cx - 9};
+        int[] ys = {cy - 11, cy - 8, cy + 1, cy + 8, cy + 11, cy + 8, cy + 1, cy - 8};
+        g.setColor(Color.WHITE);
+        g.fillPolygon(xs, ys, 8);
+        // inner cross
+        g.setColor(base.darker().darker());
+        g.fillRect(cx - 1, cy - 6, 2, 11);
+        g.fillRect(cx - 4, cy - 2, 9, 2);
+    }
+
+    /** Lightning bolt icon for ENERGIA. */
+    private void drawPowerupBolt(Graphics2D g, int px, int py, Color base) {
+        drawPowerupBase(g, px, py, base);
+        int cx = px + CELL / 2, cy = py + CELL / 2;
+        int[] xs = {cx - 5, cx + 3, cx - 1, cx + 6, cx - 3, cx + 1};
+        int[] ys = {cy - 11, cy - 11, cy - 1, cy - 1, cy + 11, cy - 1};
+        g.setColor(Color.WHITE);
+        g.fillPolygon(xs, ys, 6);
+        // darker edge for relief
+        g.setColor(base.darker());
+        g.setStroke(new BasicStroke(1f));
+        g.drawPolygon(xs, ys, 6);
     }
 
     private void drawNinja(Graphics2D g, int px, int py, Assassin a) {

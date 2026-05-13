@@ -5,12 +5,16 @@ Os assassinos duelam numa grelha 12x12 com paredes a bloquear movimento e linha 
 
 ## Como jogar (rápido)
 
-- 150 HP cada, 3 AP por turno.
+- 150 HP cada, 5 AP por turno.
 - **Mover** (1 AP): clica numa casa adjacente livre.
 - **Ataque corpo-a-corpo** (1 AP): 30 dano, casa adjacente do inimigo.
 - **Shuriken** (2 AP): 20 dano, alcance 5 casas com linha de visão (paredes bloqueiam).
 - **Curar** (2 AP): +30 HP, **só uma vez por jogo**.
-- Power-ups no mapa: verde "+" (+25 HP), laranja "!" (+15 dano no próximo ataque).
+- Power-ups no mapa:
+  - **Verde "+"**: +25 HP imediato.
+  - **Laranja "!"**: +15 dano no próximo ataque.
+  - **Azul (escudo)**: reduz o próximo dano sofrido em 50%.
+  - **Amarelo (raio)**: +2 AP imediatos neste turno.
 - Casas verdes = alvos válidos para a ação selecionada.
 - Botão "Terminar Turno" passa a vez.
 - Vence o último assassino vivo.
